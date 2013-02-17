@@ -319,9 +319,6 @@ public class RouteProvider {
 	}
 	
 	protected RouteCalculationResult findVectorMapsRoute(RouteCalculationParams params) throws IOException {
-		if(PlatformUtil.AVIAN_LIBRARY) {
-			return findNewVectorMapsRoute(params);
-		}
 		BinaryMapIndexReader[] files = params.ctx.getTodoAPI().getRoutingMapFiles();
 		RoutePlannerFrontEnd router = new RoutePlannerFrontEnd(!params.preciseRouting);
 		OsmandSettings settings = params.ctx.getSettings();

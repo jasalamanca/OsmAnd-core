@@ -564,7 +564,6 @@ public class RoutingContext {
 	}
 
 	private long maxMemory() {
-		// AVIAN FIXME
 //		return Runtime.getRuntime().maxMemory();
 		return 0;
 	}
@@ -647,7 +646,6 @@ public class RoutingContext {
 		int cnt = 4;
 		while (cnt-- >= 0) {
 			for (int i = 0; (usedMem1 < usedMem2) && (i < 1000); ++i) {
-				// AVIAN FIXME
 				runtime.runFinalization();
 				runtime.gc();
 				Thread.yield();

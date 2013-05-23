@@ -351,6 +351,8 @@ SHARED_PTR<RouteSegment> searchRouteInternal(RoutingContext* ctx, SHARED_PTR<Rou
 		if(ctx->getPlanRoadDirection() <= 0 && graphReverseSegments.size() == 0){
 			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "Route is not found to selected target point.");
 			return finalSegment;
+///		if (graphReverseSegments.empty() || graphDirectSegments.empty() || routeFound) {
+///			break;
 		}
 		if(ctx->getPlanRoadDirection() >= 0 && graphDirectSegments.size() == 0){
 			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "Route is not found from selected start point.");

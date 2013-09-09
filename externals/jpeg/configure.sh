@@ -12,7 +12,8 @@ fi
 # Download upstream if needed
 if [ ! -f "$SRCLOC/upstream.pack" ]; then
 	echo "Downloading '$NAME' upstream..."
-	curl -L http://www.ijg.org/files/jpegsrc.v8d.tar.gz > "$SRCLOC/upstream.pack" || { echo "Failure" 1>&2; exit; }
+#	curl -L http://www.ijg.org/files/jpegsrc.v8d.tar.gz > "$SRCLOC/upstream.pack" || { echo "Failure" 1>&2; exit; }
+	curl -L http://download.osmand.net/prebuilt/jpegsrc.v9.tar.gz > "$SRCLOC/upstream.pack" || { echo "Failure" 1>&2; exit; }
 fi
 
 # Extract upstream if needed

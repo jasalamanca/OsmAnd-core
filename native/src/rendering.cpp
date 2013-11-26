@@ -27,8 +27,8 @@ void calcPoint(std::pair<int, int> const & c, RenderingContext & rc)
 {
     rc.pointCount++;
 
-	float tx = c.first/ (rc.tileDivisor);
-	float ty = c.second / (rc.tileDivisor);
+	double tx = c.first/ (rc.tileDivisor);
+	double ty = c.second / (rc.tileDivisor);
 
     float dTileX = tx - rc.getLeft();
     float dTileY = ty - rc.getTop();

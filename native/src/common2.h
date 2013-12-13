@@ -77,8 +77,8 @@ private :
 	float density;
 	float screenDensityRatio;
 
-	double leftX;
-	double topY;
+	float leftX;
+	float topY;
 	int width;
 	int height;
 	int defaultColor;
@@ -110,7 +110,7 @@ public:
 public :
 
 	// calculated
-	double tileDivisor;
+	float tileDivisor;
 	float cosRotateTileSize;
 	float sinRotateTileSize;
 
@@ -158,7 +158,7 @@ public:
 		this->tileDivisor = (1 << (31 - z));
 	}
 
-	void setTileDivisor(double tileDivisor) {
+	void setTileDivisor(float tileDivisor) {
 		this->tileDivisor = tileDivisor;
 	}
 
@@ -210,11 +210,11 @@ public:
 		return zoom;
 	}
 
-	inline double getLeft() {
+	inline float getLeft() {
 		return leftX;
 	}
 
-	inline double getTop() {
+	inline float getTop() {
 		return topY;
 	}
 

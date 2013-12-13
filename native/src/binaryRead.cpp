@@ -1340,8 +1340,27 @@ void searchRouteRegion(CodedInputStream* input, SearchQuery* q, RoutingIndex* in
 	}
 }
 
+void updatePointTypes(std::vector<std::vector<uint32_t> > & pointTypes, std::vector<int> const & skipped)
+{
+	for (int i = 0; i < skipped.size(); ++i)
+	{
+//		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Mirando skipped[%d]=%d de %d", i, skipped[i], pointTypes.size());
+		int index = skipped[i];
+
+		if (index >= pointTypes.size()) return; // No more points have type info.
+
+		std::vector<uint32_t> & accumulate = pointTypes[index-1];
+		std::vector<uint32_t> & drop = pointTypes[index];
+		// Accumulate types of both points.
+		accumulate.insert(accumulate.end(), drop.begin(), drop.end());
+		// Delete drop info (index+1 position)
+		pointTypes.erase(pointTypes.begin()+index);
+	}
+}
+
 bool readRouteDataObject(CodedInputStream* input, uint32_t left, uint32_t top, RouteDataObject* obj) {
 	int tag;
+	std::vector<int> skipped;
 	while ((tag = input->ReadTag()) != 0) {
 		switch (WireFormatLite::GetTagFieldNumber(tag)) {
 		case RouteData::kTypesFieldNumber: {
@@ -1364,15 +1383,20 @@ bool readRouteDataObject(CodedInputStream* input, uint32_t left, uint32_t top, R
 			uint32_t length;
 			DO_((WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &length)));
 			int oldLimit = input->PushLimit(length);
-			int s;
 			int px = left >> ROUTE_SHIFT_COORDINATES;
 			int py = top >> ROUTE_SHIFT_COORDINATES;
 			while (input->BytesUntilLimit() > 0) {
-				DO_((WireFormatLite::ReadPrimitive<int, WireFormatLite::TYPE_SINT32>(input, &s)));
-				uint32_t x = s + px;
-				DO_((WireFormatLite::ReadPrimitive<int, WireFormatLite::TYPE_SINT32>(input, &s)));
-				uint32_t y = s + py;
+				int deltaX, deltaY;
+				DO_((WireFormatLite::ReadPrimitive<int, WireFormatLite::TYPE_SINT32>(input, &deltaX)));
+				DO_((WireFormatLite::ReadPrimitive<int, WireFormatLite::TYPE_SINT32>(input, &deltaY)));
+				if (deltaX == 0 && deltaY == 0 && !obj->pointsX.empty())
+				{
+					skipped.push_back(obj->pointsX.size());
+					continue;
+				}
 
+				uint32_t x = deltaX + px;
+				uint32_t y = deltaY + py;
 				obj->pointsX.push_back(x << ROUTE_SHIFT_COORDINATES);
 				obj->pointsY.push_back(y << ROUTE_SHIFT_COORDINATES);
 				px = x;
@@ -1424,6 +1448,7 @@ bool readRouteDataObject(CodedInputStream* input, uint32_t left, uint32_t top, R
 
 		default: {
 			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
+				updatePointTypes(obj->pointTypes, skipped);
 				return true;
 			}
 			if (!skipUnknownFields(input, tag)) {
@@ -1433,6 +1458,7 @@ bool readRouteDataObject(CodedInputStream* input, uint32_t left, uint32_t top, R
 		}
 		}
 	}
+	updatePointTypes(obj->pointTypes, skipped);
 	return true;
 }
 

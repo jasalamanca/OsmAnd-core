@@ -97,16 +97,27 @@ public:
 
 	float parseFloatValue(string value) {
 		if (type == FLOAT_TYPE) {
+			// Use fixed locale.
+			char * oldLocale = setlocale(LC_NUMERIC, NULL);
+			setlocale(LC_NUMERIC, "C");
+
 			size_t colon = value.find_first_of(':');
+			float res = 0;
 			if(colon != std::string::npos) {
-				float res = 0;
 				if(colon > 0) {
 					res += atof(value.substr(0, colon).c_str());
 				}
 				res += atof(value.substr(colon + 1).c_str());
-				return res;
 			}
-			return atof(value.c_str());
+			else
+			{
+				res = atof(value.c_str());
+			}
+
+			// Restoring locale
+			setlocale(LC_NUMERIC, oldLocale);
+
+			return res;
 		} else {
 			return -1;
 		}

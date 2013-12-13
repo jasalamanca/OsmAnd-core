@@ -60,6 +60,10 @@ void calcPoint(std::pair<int, int>  c, RenderingContext* rc)
 UNORDERED(map)<std::string, SkPathEffect*> pathEffects;
 SkPathEffect* getDashEffect(RenderingContext* rc, std::string input)
 {
+	// I think input comes from xml config files and then changing locales is necessary
+	char * oldLocales = setlocale(LC_NUMERIC, NULL);
+	setlocale(LC_NUMERIC, "C");
+
     const char* chars = input.c_str();
     int i = 0;
     char fval[10];
@@ -98,6 +102,9 @@ SkPathEffect* getDashEffect(RenderingContext* rc, std::string input)
 
     if(pathEffects.find(hash) != pathEffects.end())
         return pathEffects[hash];
+
+    // restoring locales
+    setlocale(LC_NUMERIC, oldLocales);
 
     SkPathEffect* r = new SkDashPathEffect(&primFloats[0], primFloats.size(), 0);
     pathEffects[hash] = r;

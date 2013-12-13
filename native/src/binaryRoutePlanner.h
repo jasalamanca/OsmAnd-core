@@ -174,8 +174,7 @@ struct RoutingConfiguration {
 	float heurCoefficient;
 	int planRoadDirection;
 	string routerName;
-	
-	
+
 	void initParams(MAP_STR_STR& attributes) {
 		planRoadDirection = (int) parseFloat(attributes, "planRoadDirection", 0);
 		heurCoefficient = parseFloat(attributes, "heuristicCoefficient", 1);

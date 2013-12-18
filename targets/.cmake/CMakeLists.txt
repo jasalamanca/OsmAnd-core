@@ -50,9 +50,6 @@ add_subdirectory("${OSMAND_PROJECTS_ROOT}/freetype" "freetype")
 # External : gif
 add_subdirectory("${OSMAND_PROJECTS_ROOT}/giflib" "giflib")
 
-# External : harfbuzz
-#add_subdirectory("${OSMAND_PROJECTS_ROOT}/harfbuzz" "harfbuzz")
-
 # External : jpeg
 add_subdirectory("${OSMAND_PROJECTS_ROOT}/jpeg" "jpeg")
 

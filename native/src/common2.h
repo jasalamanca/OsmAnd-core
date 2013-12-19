@@ -271,7 +271,12 @@ double getDistance(double lat1, double lon1, double lat2, double lon2);
 double getPowZoom(float zoom);
 
 double calculateProjection31TileMetric(int xA, int yA, int xB, int yB, int xC, int yC);
-double squareDist31TileMetric(int x1, int y1, int x2, int y2) ;
+std::pair<int, int> calculateProjectionPoint31(int xA, int yA, int xB, int yB, int xC, int yC);
+double squareDist31TileMetric(int x1, int y1, int x2, int y2);
+inline double distance31TileMetric(int x1, int y1, int x2, int y2)
+{
+	return sqrt(squareDist31TileMetric(x1, y1, x2, y2));
+}
 double convert31YToMeters(int y1, int y2);
 double convert31XToMeters(int y1, int y2);
 double alignAngleDifference(double diff);
@@ -376,7 +381,5 @@ private:
 };
 
 int findFirstNumberEndIndex(string value); 
-
-
 
 #endif /*_OSMAND_COMMON_H*/

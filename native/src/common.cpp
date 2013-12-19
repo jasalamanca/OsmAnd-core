@@ -131,13 +131,36 @@ double calculateProjection31TileMetric(int xA, int yA, int xB, int yB, int xC, i
 	double multiple = convert31XToMeters(xB, xA) * convert31XToMeters(xC, xA) + convert31YToMeters(yB, yA) * convert31YToMeters(yC, yA);
 	return multiple;
 }
+
+// C projection over AB segment.
+std::pair<int, int> calculateProjectionPoint31(int xA, int yA, int xB, int yB, int xC, int yC)
+{
+	double projection = calculateProjection31TileMetric(xA, yA, xB, yB, xC, yC);
+	if (projection < 0)
+	{
+		return std::pair<int, int>(xA, yA);
+	}
+	else
+	{
+		double sDist = squareDist31TileMetric(xA, yA, xB, yB);
+		if (projection >= sDist)
+		{
+			return std::pair<int, int>(xB, yB);
+		}
+		else
+		{
+			double c = projection / sDist;
+			return std::pair<int, int>(xA+(xB-xA)*c, yA+(yB-yA)*c);
+		}
+	}
+}
+
 double squareDist31TileMetric(int x1, int y1, int x2, int y2) {
-// translate into meters
+	// translate into meters
 	double dy = convert31YToMeters(y1, y2);
 	double dx = convert31XToMeters(x1, x2);
 	return dx * dx + dy * dy;
 }
-
 
 double checkLongitude(double longitude) {
 	while (longitude < -180 || longitude > 180) {

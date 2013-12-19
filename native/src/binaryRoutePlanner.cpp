@@ -730,43 +730,63 @@ SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx) {
 	if (dataObjects.size() == 0) {
 		ctx->loadTileData(px, py, 15, dataObjects);
 	}
-	SHARED_PTR<RouteSegment> road;
+
+	// Candidate
+	SHARED_PTR<RouteDataObject> road = NULL;
+	int index = -1;
+	int candidateX = -1;
+	int candidateY = -1;
 	double sdist = 0;
-	int foundx = 0;
-	int foundy = 0;
 	vector<SHARED_PTR<RouteDataObject> >::iterator it = dataObjects.begin();
 	for (; it!= dataObjects.end(); it++) {
 		SHARED_PTR<RouteDataObject> r = *it;
 		if (r->pointsX.size() > 1) {
-			for (uint j = 1; j < r->pointsX.size(); j++) {
-				std::pair<int, int> p = getProjectionPoint(px, py, 
-						r->pointsX[j -1 ], r->pointsY[j-1], r->pointsX[j], r->pointsY[j]);
-				int prx = p.first;
-				int pry = p.second;
-				double currentsDist = squareDist31TileMetric(prx, pry, px, py);
-				if (road.get() == NULL || currentsDist < sdist) {
-					road = SHARED_PTR<RouteSegment>(new RouteSegment(r, j));
-					foundx = prx;
-					foundy = pry;
+			for (int j = 1; j < r->pointsX.size(); ++j) {
+				// (px, py) projection over (j-1)(j) segment
+				std::pair<int, int> pr = calculateProjectionPoint31(r->pointsX[j -1], r->pointsY[j-1],
+						r->pointsX[j], r->pointsY[j],
+						px, py);
+				// Both distance and squared distance (we use) are monotone and positive functions.
+				double currentsDist = squareDist31TileMetric(pr.first, pr.second, px, py);
+				if (currentsDist < sdist || road.get() == NULL) {
+					// New candidate
+					road = r;
+					index = j;
+					candidateX = pr.first;
+					candidateY = pr.second;
 					sdist = currentsDist;
 				}
 			}
 		}
 	}
 	if (road.get() != NULL) {
-		// make copy before
-		SHARED_PTR<RouteDataObject> r = road->road;
-		uint index = road->getSegmentStart();
-		r->pointsX.insert(r->pointsX.begin() + index, foundx);
-		r->pointsY.insert(r->pointsY.begin() + index, foundy);
-		if(r->pointTypes.size() > index) {
-			r->pointTypes.insert(r->pointTypes.begin() + index, std::vector<uint32_t>());
+		if ((candidateX == road->pointsX[index-1]) && (candidateY == road->pointsY[index-1]))
+		{
+			// Projection has same coordinates. None new.
+			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index-1);
 		}
-		uint32_t x31 = r->pointsX[index];
-		uint32_t y31 = r->pointsY[index];
-		ctx->reregisterRouteDataObject(r, index, x31, y31);
+		if ((candidateX == road->pointsX[index]) && (candidateY == road->pointsY[index]))
+		{
+			// Projection has same coordinates. None new.
+			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index);
+		}
+
+///		// Add projection to a new version of the road.
+///		RouteDataObject proj = new RouteDataObject(road);
+///		proj.insert(index, candidateX, candidateY);
+///		// re-register the best road because one more point was inserted
+///		ctx.registerRouteDataObject(proj);
+/// Java version duplicate, change and register a new copy of road.
+/// Native version directly change original road (map information)
+/// TODO Check this differences.
+		road->pointsX.insert(road->pointsX.begin() + index, candidateX);
+		road->pointsY.insert(road->pointsY.begin() + index, candidateY);
+		if(road->pointTypes.size() > index) {
+			road->pointTypes.insert(road->pointTypes.begin() + index, std::vector<uint32_t>());
+		}
+		return SHARED_PTR<RouteSegment>(new RouteSegment(road, index));
 	}
-	return road;
+	return NULL;
 }
 
 bool combineTwoSegmentResult(RouteSegmentResult& toAdd, RouteSegmentResult& previous, bool reverse) {

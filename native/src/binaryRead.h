@@ -176,22 +176,27 @@ struct RouteDataObject {
 		double total = 0;
 		do {
 			if (plus) {
-				nx++;
-				if (nx >= (int) pointsX.size()) {
+				if (++nx >= pointsX.size()) {
 					break;
 				}
 			} else {
-				nx--;
-				if (nx < 0) {
+				if (--nx < 0) {
 					break;
 				}
 			}
 			px = pointsX[nx];
 			py = pointsY[nx];
 			// translate into meters
+			// TODO review distance criteria
 			total += abs(px - x) * 0.011 + abs(py - y) * 0.01863;
 		} while (total < dist);
-		return -atan2( (float)x - px, (float) y - py );
+
+        if ((x == px) && (y == py))
+        {
+                // Calculate bearing reverse way and adjust.
+                return alignAngleDifference(directionRoute(startPoint, !plus, dist) - M_PI);
+        }
+		return -atan2(x - px, y - py);
 	}
 
 	static double parseSpeed(string v, double def) {

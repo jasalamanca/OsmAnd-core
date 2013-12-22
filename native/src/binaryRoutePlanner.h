@@ -159,7 +159,8 @@ struct RoutingSubregionTile {
 		}
 	}
 };
-static int64_t calcRouteId(SHARED_PTR<RouteDataObject> o, int ind) {
+
+static inline int64_t calcRouteId(SHARED_PTR<RouteDataObject> o, int ind) {
 	return ((int64_t) o->id << 10) + ind;
 }
 
@@ -283,6 +284,9 @@ struct RoutingContext {
 	MAP_SUBREGION_TILES subregionTiles;
 	UNORDERED(map)<int64_t, std::vector<SHARED_PTR<RoutingSubregionTile> > > indexedSubregions;
 
+	// To manage modified roads.
+	std::vector<SHARED_PTR<RouteDataObject> > registered;
+
 	RoutingContext(RoutingConfiguration* config) : 
 		visitedSegments(0), loadedTiles(0),
 		firstRoadDirection(0), firstRoadId(0),
@@ -398,16 +402,28 @@ struct RoutingContext {
 	void reregisterRouteDataObject(SHARED_PTR<RouteDataObject> o, int segmentStart, uint32_t x, uint32_t y);
 
 	void loadTileData(int x31, int y31, int zoomAround, vector<SHARED_PTR<RouteDataObject> >& dataObjects ) {
-		int t = config->zoomToLoad - zoomAround;
-		int coordinatesShift = (1 << (31 - config->zoomToLoad));
+		UNORDERED(set)<int64_t> ids;
+		// First search on new road. Newer the better.
+		for (int i = registered.size()-1; i >= 0; --i)
+		{
+			int64_t id = registered[i]->id;
+			if (ids.count(id) == 0)
+			{
+				ids.insert(id);
+				dataObjects.push_back(registered[i]);
+			}
+		}
+
+		// Second search on map info.
+		int t = config.zoomToLoad - zoomAround;
+		int coordinatesShift = (1 << (31 - config.zoomToLoad));
 		if(t <= 0) {
 			t = 1;
 			coordinatesShift = (1 << (31 - zoomAround));
 		} else {
 			t = 1 << t;
 		}
-		UNORDERED(set)<int64_t> ids;
-		int z  = config->zoomToLoad;
+		int z  = config.zoomToLoad;
 		for(int i = -t; i <= t; i++) {
 			for(int j = -t; j <= t; j++) {
 				uint32_t xloc = (x31 + i*coordinatesShift) >> (31 - z);
@@ -421,9 +437,9 @@ struct RoutingContext {
 						while(s != subregions[j]->routes.end()) {
 							SHARED_PTR<RouteSegment> seg = s->second;
 							while(seg.get() != NULL) {
-								if(ids.find(seg->road->id) == ids.end()) {
-									dataObjects.push_back(seg->road);
+								if (ids.count(seg->road->id) == 0) {
 									ids.insert(seg->road->id);
+									dataObjects.push_back(seg->road);
 								}
 								seg = seg->next;
 							}
@@ -435,27 +451,47 @@ struct RoutingContext {
 		}
 	}
 
-	// void searchRouteRegion(SearchQuery* q, std::vector<RouteDataObject*>& list, RoutingIndex* rs, RouteSubregion* sub)
 	SHARED_PTR<RouteSegment> loadRouteSegment(int x31, int y31) {
-		int z  = config->zoomToLoad;
+		UNORDERED(set)<int64_t> excludeDuplications;
+		SHARED_PTR<RouteSegment> original;
+		// First search on new roads. Newer is better.
+		for (int i = registered.size()-1; i >= 0; --i)
+		{
+			SHARED_PTR<RouteDataObject> ro = registered[i];
+			for (int index = 0; index < ro->pointsX.size(); ++index)
+			{
+				int64_t roId = calcRouteId(ro, index);
+				if (excludeDuplications.count(roId) == 0) {
+					excludeDuplications.insert(roId);
+					if (x31 == ro->pointsX[index] && y31 == ro->pointsY[index])
+					{
+						SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, index));
+						s->next = original;
+						original = 	s;
+					}
+				}
+			}
+		}
+
+		// Second search on map info.
+		int z = config.zoomToLoad;
 		int64_t xloc = x31 >> (31 - z);
 		int64_t yloc = y31 >> (31 - z);
-		uint64_t l = (((uint64_t) x31) << 31) + (uint64_t) y31;
 		int64_t tileId = (xloc << z) + yloc;
+		uint64_t l = (((uint64_t) x31) << 31) + (uint64_t) y31;
 		loadHeaders(xloc, yloc);
 		vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
-		UNORDERED(map)<int64_t, SHARED_PTR<RouteDataObject> > excludeDuplications;
-		SHARED_PTR<RouteSegment> original;
-		for(uint j = 0; j<subregions.size(); j++) {
+		for(int j = 0; j<subregions.size(); j++) {
 			if(subregions[j]->isLoaded()) {
 				SHARED_PTR<RouteSegment> segment = subregions[j]->routes[l];
 				subregions[j]->access++;
 				while (segment.get() != NULL) {
 					SHARED_PTR<RouteDataObject> ro = segment->road;
-					SHARED_PTR<RouteDataObject> toCmp = excludeDuplications[calcRouteId(ro, segment->getSegmentStart())];
-					if (toCmp.get() == NULL || toCmp->pointsX.size() < ro->pointsX.size()) {
-						excludeDuplications[calcRouteId(ro, segment->getSegmentStart())] =  ro;
-						SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, segment->getSegmentStart()));
+					int sStart = segment->segmentStart;
+					int64_t roId = calcRouteId(ro, sStart);
+					if (excludeDuplications.count(roId) == 0) {
+						excludeDuplications.insert(roId);
+						SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, sStart));
 						s->next = original;
 						original = 	s;
 					}
@@ -482,6 +518,11 @@ struct RoutingContext {
 		return config->planRoadDirection;
 	}
 
+	// Register modified route data objects with a live time equal to that of context.
+	void registerRouteDataObject(SHARED_PTR<RouteDataObject> & o)
+	{
+		registered.push_back(SHARED_PTR<RouteDataObject>(o));
+	}
 };
 
 

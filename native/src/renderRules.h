@@ -175,7 +175,7 @@ public:
 	void printDebugRenderingRule(string indent, RenderingRulesStorage * st);
 private :
 	inline int getPropertyIndex(string property) {
-		for (uint i = 0; i < properties.size(); i++) {
+		for (int i = properties.size()-1; i >= 0; --i) {
 			RenderingRuleProperty* prop = properties[i];
 			if (prop->attrName == property) {
 				return i;
@@ -409,7 +409,6 @@ static string A_SHADOW_RENDERING="shadowRendering";
 
 class RenderingRulesStorage
 {
-
 private:
 	friend class RenderingRulesHandler;
 	UNORDERED(map)<std::string, int> dictionaryMap;
@@ -432,8 +431,10 @@ public:
 	const static int POLYGON_RULES = 3;
 	const static int TEXT_RULES = 4;
 	const static int ORDER_RULES = 5;
-	RenderingRulesStorage(const void* storage, bool createDefProperties = true) : 
-			PROPS(createDefProperties), storageId(storage) {
+	const void* storageId;
+
+	RenderingRulesStorage(const void* storage, bool createDefProperties = true)
+	: PROPS(createDefProperties), storageId(storage) {
 		tagValueGlobalRules = new UNORDERED(map)<int, RenderingRule*>[SIZE_STATES];
 		if(createDefProperties) {
 			getDictionaryValue("");
@@ -446,7 +447,6 @@ public:
 		}
 		delete[] tagValueGlobalRules;
 	}
-	const void* storageId;
 
 	RenderingRule* getRule(int state, int itag, int ivalue);
 

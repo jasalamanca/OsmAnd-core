@@ -140,7 +140,6 @@ public:
 			shadowLevelMin(256), shadowLevelMax(0), polygonMinSizeToDisplay(0),
 			roadDensityZoomTile(0), roadsDensityLimitPerTile(0) 
 	{
-		
 	}
 	virtual ~RenderingContext();
 

@@ -1642,6 +1642,7 @@ void searchRouteDataForSubRegion(SearchQuery* q, std::vector<RouteDataObject*>& 
 			if (q->publisher->isCancelled()) {
 				break;
 			}
+// TODO cascaba aquí, ahora no.
 			if(rs != NULL && (rs->name != (*routingIndex)->name || rs->filePointer != (*routingIndex)->filePointer)){
 				continue;
 			}

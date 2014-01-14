@@ -731,7 +731,7 @@ jobject convertRouteSegmentResultToJava(JNIEnv* ienv, RouteSegmentResult& r, UNO
 	jobject reg = NULL;
 	int64_t fp = rdo->region->filePointer;
 	int64_t ln = rdo->region->length;
-	if(indexes.find((fp <<31) + ln) != indexes.end()) {
+	if(indexes.count((fp <<31) + ln) != 0) {
 		reg = ienv->GetObjectArrayElement(regions, indexes[(fp <<31) + ln]);
 	}
 	jobjectArray ar = ienv->NewObjectArray(r.attachedRoutes.size(), jclass_RouteSegmentResultAr, NULL);
@@ -1003,12 +1003,12 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRo
 		ienv->SetObjectArrayElement(res, i, resobj);
 		ienv->DeleteLocalRef(resobj);
 	}
-	if(c.finalRouteSegment.get() != NULL) {
+	if(c.finalRouteSegment != NULL) {
 		ienv->SetFloatField(progress, jfield_RouteCalculationProgress_routingCalculatedTime, c.finalRouteSegment->distanceFromStart);
 	}
 	ienv->SetIntField(progress, jfield_RouteCalculationProgress_visitedSegments, c.visitedSegments);
 	ienv->SetIntField(progress, jfield_RouteCalculationProgress_loadedTiles, c.loadedTiles);
-	if (r.size() == 0) {
+	if (r.empty()) {
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "No route found");
 	}
 	fflush(stdout);
@@ -1061,28 +1061,26 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 				ienv->DeleteLocalRef(robj);
 			}
 		}
-		for (uint i = 0; i < result.size(); i++) {
-			if (result[i] != NULL) {
-				delete result[i];
-			}
+		for (int i = result.size()-1; i >= 0; --i) {
+			delete result[i];
 			result[i] = NULL;
 		}
 		return ienv->NewObject(jclass_NativeRouteSearchResult, jmethod_NativeRouteSearchResult_init, ((jlong) 0), res);
 	} else {
 		NativeRoutingTile* r = new NativeRoutingTile();
-		for (jint i = 0; i < (int)result.size(); i++) {
+		for (int i = result.size()-1; i >= 0; --i) {
 			if (result[i] != NULL) {
 				r->result.push_back(result[i]);
-				for (jint j = 0; j < (int)result[i]->pointsX.size(); j++) {
-					jint x = result[i]->pointsX[j];
-					jint y = result[i]->pointsY[j];
-					uint64_t lr = ((uint64_t) x << 31) + y;
+				for (int j = result[i]->pointsX.size()-1; j >= 0; --j) {
+					uint64_t x = result[i]->pointsX[j];
+					uint64_t y = result[i]->pointsY[j];
+					uint64_t lr = (x << 31) + y;
 					r->cachedByLocations[lr].push_back(result[i]);
 				}
 			}
 		}
 		jlong ref = (jlong) r;
-		if(r->result.size() == 0) {
+		if(r->result.empty()) {
 			ref = 0;
 			delete r;
 		}

@@ -25,7 +25,7 @@ namespace OsmAnd
 
         const high_resolution_clock::duration& GetElapsed();
 
-        uint64_t GetElapsedMs();
+        int GetElapsedMs();
     };
 }
 

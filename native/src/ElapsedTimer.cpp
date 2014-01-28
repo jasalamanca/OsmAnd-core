@@ -40,7 +40,7 @@ const high_resolution_clock::duration& OsmAnd::ElapsedTimer::GetElapsed()
 	return elapsed;
 }
 
-uint64_t OsmAnd::ElapsedTimer::GetElapsedMs()
+int OsmAnd::ElapsedTimer::GetElapsedMs()
 {
     Pause();
     return std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();

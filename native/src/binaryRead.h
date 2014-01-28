@@ -167,10 +167,10 @@ struct RouteDataObject {
 	}
 
 	// Gives route direction of EAST degrees from NORTH ]-PI, PI]
-	double directionRoute(int startPoint, bool plus, float dist) {
+	double directionRoute(size_t startPoint, bool plus, float dist) {
 		int x = pointsX[startPoint];
 		int y = pointsY[startPoint];
-		int nx = startPoint;
+		size_t nx = startPoint;
 		int px = x;
 		int py = y;
 		double total = 0;
@@ -321,7 +321,7 @@ struct BinaryMapFile {
 	int routefd;
 	bool basemap;
 
-	bool isBasemap(){
+	bool isBasemap() const {
 		return basemap;
 	}
 
@@ -352,11 +352,11 @@ struct ResultPublisher {
 
 struct SearchQuery {
 	RenderingRuleSearchRequest* req;
-	int left;
-	int right;
-	int top;
-	int bottom;
-	uint zoom;
+	uint32_t left;
+	uint32_t right;
+	uint32_t top;
+	uint32_t bottom;
+	int zoom;
 	ResultPublisher* publisher;
 
 	coordinates cacheCoordinates;
@@ -387,16 +387,17 @@ struct SearchQuery {
 	}
 };
 
-void searchRouteSubregions(SearchQuery* q, std::vector<RouteSubregion>& tempResult, bool basemap);
+// Public interface to file maps.
+void searchRouteSubregions(SearchQuery const * q, std::vector<RouteSubregion>& tempResult, bool basemap);
 
-void searchRouteDataForSubRegion(SearchQuery* q, std::vector<RouteDataObject*>& list, RouteSubregion* sub);
+void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list, RouteSubregion const * sub);
 
 ResultPublisher* searchObjectsForRendering(SearchQuery* q, bool skipDuplicates, int renderRouteDataFile, std::string msgNothingFound, int& renderedState);
 
-BinaryMapFile* initBinaryMapFile(std::string inputName);
+BinaryMapFile* initBinaryMapFile(std::string const & inputName);
 
-bool initMapFilesFromCache(std::string inputName) ;
+bool initMapFilesFromCache(std::string const & inputName) ;
 
-bool closeBinaryMapFile(std::string inputName);
+bool closeBinaryMapFile(std::string const & inputName);
 
 #endif

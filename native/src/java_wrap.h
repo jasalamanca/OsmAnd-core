@@ -37,8 +37,8 @@ struct JNIRenderingContext : RenderingContext
 	virtual ~JNIRenderingContext(){}
 };
 
-void pullFromJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext* rc);
-void pushToJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext* rc);
+void pullFromJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext & rc);
+void pushToJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext & rc);
 
 jobject newGlobalRef(JNIEnv* env, jobject o)
 {

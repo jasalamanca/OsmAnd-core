@@ -39,26 +39,24 @@ struct MapDataObjectPrimitive {
 	int objectType;
 };
 
-
-void calcPoint(std::pair<int, int>  c, RenderingContext* rc)
+void calcPoint(std::pair<int, int> const & c, RenderingContext & rc)
 {
-    rc->pointCount++;
+    rc.pointCount++;
 
-	float tx = c.first/ (rc->tileDivisor);
-	float ty = c.second / (rc->tileDivisor);
+	float tx = c.first/ (rc.tileDivisor);
+	float ty = c.second / (rc.tileDivisor);
 
-    float dTileX = tx - rc->getLeft();
-    float dTileY = ty - rc->getTop();
-    rc->calcX = rc->cosRotateTileSize * dTileX - rc->sinRotateTileSize * dTileY;
-    rc->calcY = rc->sinRotateTileSize * dTileX + rc->cosRotateTileSize * dTileY;
+    float dTileX = tx - rc.getLeft();
+    float dTileY = ty - rc.getTop();
+    rc.calcX = rc.cosRotateTileSize * dTileX - rc.sinRotateTileSize * dTileY;
+    rc.calcY = rc.sinRotateTileSize * dTileX + rc.cosRotateTileSize * dTileY;
 
-    if (rc->calcX >= 0 && rc->calcX < rc->getWidth()&& rc->calcY >= 0 && rc->calcY < rc->getHeight())
-        rc->pointInsideCount++;
+    if (rc.calcX >= 0 && rc.calcX < rc.getWidth()&& rc.calcY >= 0 && rc.calcY < rc.getHeight())
+        rc.pointInsideCount++;
 }
 
-
 UNORDERED(map)<std::string, SkPathEffect*> pathEffects;
-SkPathEffect* getDashEffect(RenderingContext* rc, std::string input)
+SkPathEffect* getDashEffect(RenderingContext const & rc, std::string const & input)
 {
 	// I think input comes from xml config files and then changing locales is necessary
 	char * oldLocales = setlocale(LC_NUMERIC, NULL);
@@ -85,7 +83,7 @@ SkPathEffect* getDashEffect(RenderingContext* rc, std::string input)
 			if(afterColon) {
 				primFloats[primFloats.size() - 1] += parsed;
 			} else {
-				parsed = rc->getDensityValue(parsed);
+				parsed = rc.getDensityValue(parsed);
 				primFloats.push_back(parsed); 
 			}
 			hash += (parsed * 10);
@@ -100,18 +98,18 @@ SkPathEffect* getDashEffect(RenderingContext* rc, std::string input)
         }
     }
 
-    if(pathEffects.find(hash) != pathEffects.end())
-        return pathEffects[hash];
-
     // restoring locales
     setlocale(LC_NUMERIC, oldLocales);
+
+    if(pathEffects.find(hash) != pathEffects.end())
+        return pathEffects[hash];
 
     SkPathEffect* r = new SkDashPathEffect(&primFloats[0], primFloats.size(), 0);
     pathEffects[hash] = r;
     return r;
 }
 
-int updatePaint(RenderingRuleSearchRequest* req, SkPaint* paint, int ind, int area, RenderingContext* rc)
+int updatePaint(RenderingRuleSearchRequest const * req, SkPaint & paint, int ind, int area, RenderingContext & rc)
 {
     RenderingRuleProperty* rColor;
     RenderingRuleProperty* rStrokeW;
@@ -155,48 +153,48 @@ int updatePaint(RenderingRuleSearchRequest* req, SkPaint* paint, int ind, int ar
 
     if (area)
     {
-    	paint->setColorFilter(NULL);
-    	paint->setShader(NULL);
-    	paint->setLooper(NULL);
-        paint->setStyle(SkPaint::kStrokeAndFill_Style);
-        paint->setStrokeWidth(0);
+    	paint.setColorFilter(NULL);
+    	paint.setShader(NULL);
+    	paint.setLooper(NULL);
+    	paint.setStyle(SkPaint::kStrokeAndFill_Style);
+    	paint.setStrokeWidth(0);
     }
     else
     {
         float stroke = getDensityValue(rc, req, rStrokeW);
         if (!(stroke > 0))
             return 0;
-        paint->setColorFilter(NULL);
-        paint->setShader(NULL);
-        paint->setLooper(NULL);
+        paint.setColorFilter(NULL);
+        paint.setShader(NULL);
+        paint.setLooper(NULL);
 
-        paint->setStyle(SkPaint::kStroke_Style);
-        paint->setStrokeWidth(stroke);
+        paint.setStyle(SkPaint::kStroke_Style);
+        paint.setStrokeWidth(stroke);
         std::string cap = req->getStringPropertyValue(rCap);
         std::string pathEff = req->getStringPropertyValue(rPathEff);
 
         if (cap == "BUTT" || cap == "")
-            paint->setStrokeCap(SkPaint::kButt_Cap);
+            paint.setStrokeCap(SkPaint::kButt_Cap);
         else if (cap == "ROUND")
-            paint->setStrokeCap(SkPaint::kRound_Cap);
+            paint.setStrokeCap(SkPaint::kRound_Cap);
         else if (cap == "SQUARE")
-            paint->setStrokeCap(SkPaint::kSquare_Cap);
+            paint.setStrokeCap(SkPaint::kSquare_Cap);
         else
-            paint->setStrokeCap(SkPaint::kButt_Cap);
+            paint.setStrokeCap(SkPaint::kButt_Cap);
 
         if (pathEff.size() > 0)
         {
             SkPathEffect* p = getDashEffect(rc, pathEff);
-            paint->setPathEffect(p);
+            paint.setPathEffect(p);
         }
         else
         {
-            paint->setPathEffect(NULL);
+            paint.setPathEffect(NULL);
         }
     }
 
     int color = req->getIntPropertyValue(rColor);
-    paint->setColor(color);
+    paint.setColor(color);
 
     if (ind == 0)
     {
@@ -205,49 +203,49 @@ int updatePaint(RenderingRuleSearchRequest* req, SkPaint* paint, int ind, int ar
         {
             SkBitmap* bmp = getCachedBitmap(rc, shader);
             if (bmp != NULL) {
-                paint->setShader(new SkBitmapProcShader(*bmp, SkShader::kRepeat_TileMode, SkShader::kRepeat_TileMode))->unref();
+                paint.setShader(new SkBitmapProcShader(*bmp, SkShader::kRepeat_TileMode, SkShader::kRepeat_TileMode))->unref();
                 if(color == 0) {
-					paint->setColor(0xffffffff);                	
+					paint.setColor(0xffffffff);
                 }
             }
         }
     }
 
     // do not check shadow color here
-    if (rc->getShadowRenderingMode() == 1 && ind == 0)
+    if (rc.getShadowRenderingMode() == 1 && ind == 0)
     {
         int shadowColor = req->getIntPropertyValue(req->props()->R_SHADOW_COLOR);
         int shadowLayer = getDensityValue(rc, req, req->props()->R_SHADOW_RADIUS);
         if (shadowColor == 0) {
-			shadowColor = rc->getShadowRenderingColor();
+			shadowColor = rc.getShadowRenderingColor();
 		}
         if (shadowColor == 0)
             shadowLayer = 0;
 
         if (shadowLayer > 0)
-            paint->setLooper(new SkBlurDrawLooper(shadowLayer, 0, 0, shadowColor))->unref();
+            paint.setLooper(new SkBlurDrawLooper(shadowLayer, 0, 0, shadowColor))->unref();
     }
     return 1;
 }
 
-void renderText(MapDataObject* obj, RenderingRuleSearchRequest* req, RenderingContext* rc, std::string tag,
-		std::string value, float xText, float yText, SkPath* path) {
+void renderText(MapDataObject* obj, RenderingRuleSearchRequest* req, RenderingContext & rc, std::string const & tag,
+		std::string const & value, float xText, float yText, SkPath const * path) {
 	UNORDERED(map)<std::string, std::string>::iterator it, next = obj->objectNames.begin();
 	while (next != obj->objectNames.end()) {
 		it = next++;
 		if (it->second.length() > 0) {
 			std::string name = it->second;
 			std::string tagName = it->first == "name" ? "" : it->first;
-			if (tagName == "" && rc -> isUsingEnglishNames() && obj->objectNames.find("name:en") != 
+			if (tagName == "" && rc.isUsingEnglishNames() && obj->objectNames.find("name:en") !=
 					obj->objectNames.end()) {
 				continue;
 			} 
-			if (tagName == "name:en" && !rc -> isUsingEnglishNames()) {
+			if (tagName == "name:en" && !rc.isUsingEnglishNames()) {
 				continue;
 			}
-			name =rc->getTranslatedString(name);
-			name =rc->getReshapedString(name);
-			req->setInitialTagValueZoom(tag, value, rc->getZoom(), obj);
+			name =rc.getTranslatedString(name);
+			name =rc.getReshapedString(name);
+			req->setInitialTagValueZoom(tag, value, rc.getZoom(), obj);
 			req->setIntFilter(req->props()->R_TEXT_LENGTH, name.length());			
 			req->setStringFilter(req->props()->R_NAME_TAG, tagName);
 			if (req->searchRule(RenderingRulesStorage::TEXT_RULES)
@@ -265,34 +263,33 @@ void renderText(MapDataObject* obj, RenderingRuleSearchRequest* req, RenderingCo
 					info->path = new SkPath(*path);
 
 				fillTextProperties(rc, info, req, xText, yText);
-				rc->textToDraw.push_back(info);
+				rc.textToDraw.push_back(info);
 			}
 		}
 	}
-
 }
 
-void drawPolylineShadow(SkCanvas* cv, SkPaint* paint, RenderingContext* rc, SkPath* path, int shadowColor, int shadowRadius)
+void drawPolylineShadow(SkCanvas & cv, SkPaint & paint, RenderingContext const & rc, SkPath const & path,
+		int shadowColor, int shadowRadius)
 {
     // blurred shadows
-    if (rc->getShadowRenderingMode() == 2 && shadowRadius > 0) {
+    if (rc.getShadowRenderingMode() == 2 && shadowRadius > 0) {
         // simply draw shadow? difference from option 3 ?
         // paint->setColor(0xffffffff);
-        paint->setLooper(new SkBlurDrawLooper(shadowRadius, 0, 0, shadowColor))->unref();
-        PROFILE_NATIVE_OPERATION(rc, cv->drawPath(*path, *paint));
+        paint.setLooper(new SkBlurDrawLooper(shadowRadius, 0, 0, shadowColor))->unref();
+        PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
     }
 
     // option shadow = 3 with solid border
-    if (rc->getShadowRenderingMode() == 3 && shadowRadius > 0) {
-        paint->setLooper(NULL);
-        paint->setStrokeWidth(paint->getStrokeWidth() + shadowRadius * 2);
+    if (rc.getShadowRenderingMode() == 3 && shadowRadius > 0) {
+        paint.setLooper(NULL);
+        paint.setStrokeWidth(paint.getStrokeWidth() + shadowRadius * 2);
         //		paint->setColor(0xffbababa);
-        paint->setColorFilter(SkColorFilter::CreateModeFilter(shadowColor, SkXfermode::kSrcIn_Mode))->unref();
+        paint.setColorFilter(SkColorFilter::CreateModeFilter(shadowColor, SkXfermode::kSrcIn_Mode))->unref();
         //		paint->setColor(shadowColor);
-        PROFILE_NATIVE_OPERATION(rc, cv->drawPath(*path, *paint));
+        PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
     }
 }
-
 
 SkPaint* oneWayPaint(){
     SkPaint* oneWay = new SkPaint;
@@ -301,12 +298,13 @@ SkPaint* oneWayPaint(){
     oneWay->setAntiAlias(true);
     return oneWay;
 }
-void drawOneWayPaints(RenderingContext* rc, SkCanvas* cv, SkPath* p, int oneway) {
-	float rmin = rc->getDensityValue(1);
+
+void drawOneWayPaints(RenderingContext & rc, SkCanvas & cv, SkPath const & p, int oneway) {
+	float rmin = rc.getDensityValue(1);
 	if(rmin > 1) {
 		rmin = rmin * 2 / 3;
 	}
-	if (rc->oneWayPaints.size() == 0) {
+	if (rc.oneWayPaints.size() == 0) {
         const float intervals_oneway[4][4] = {
             {0, 12, 10 * rmin, 152},
             {0, 12,  9 * rmin, 152 + rmin},
@@ -318,32 +316,33 @@ void drawOneWayPaints(RenderingContext* rc, SkCanvas* cv, SkPath* p, int oneway)
 		SkPathEffect* arrowDashEffect3 = new SkDashPathEffect(intervals_oneway[2], 4, 1);
 		SkPathEffect* arrowDashEffect4 = new SkDashPathEffect(intervals_oneway[3], 4, 1);
 
+		////// TODO oneWayPaint?????
 		SkPaint* p = oneWayPaint();
 		p->setStrokeWidth(rmin);
 		p->setPathEffect(arrowDashEffect1)->unref();
-		rc->oneWayPaints.push_back(*p);
+		rc.oneWayPaints.push_back(*p);
 		delete p;
 
 		p = oneWayPaint();
 		p->setStrokeWidth(rmin * 2);
 		p->setPathEffect(arrowDashEffect2)->unref();
-		rc->oneWayPaints.push_back(*p);
+		rc.oneWayPaints.push_back(*p);
 		delete p;
 
 		p = oneWayPaint();
 		p->setStrokeWidth(rmin * 3);
 		p->setPathEffect(arrowDashEffect3)->unref();
-		rc->oneWayPaints.push_back(*p);
+		rc.oneWayPaints.push_back(*p);
 		delete p;
 
 		p = oneWayPaint();
 		p->setStrokeWidth(rmin * 4);
 		p->setPathEffect(arrowDashEffect4)->unref();
-		rc->oneWayPaints.push_back(*p);
+		rc.oneWayPaints.push_back(*p);
 		delete p;
 	}
 	
-	if (rc->reverseWayPaints.size() == 0) {
+	if (rc.reverseWayPaints.size() == 0) {
             const float intervals_reverse[4][4] = {
                 {0, 12, 10 * rmin, 152},
                 {0, 12 + 1 * rmin, 9 * rmin, 152},
@@ -357,42 +356,40 @@ void drawOneWayPaints(RenderingContext* rc, SkCanvas* cv, SkPath* p, int oneway)
 		SkPaint* p = oneWayPaint();
 		p->setStrokeWidth(rmin * 1);
 		p->setPathEffect(arrowDashEffect1)->unref();
-		rc->reverseWayPaints.push_back(*p);
+		rc.reverseWayPaints.push_back(*p);
 		delete p;
 
 		p = oneWayPaint();
 		p->setStrokeWidth(rmin * 2);
 		p->setPathEffect(arrowDashEffect2)->unref();
-		rc->reverseWayPaints.push_back(*p);
+		rc.reverseWayPaints.push_back(*p);
 		delete p;
 
 		p = oneWayPaint();
 		p->setStrokeWidth(rmin * 3);
 		p->setPathEffect(arrowDashEffect3)->unref();
-		rc->reverseWayPaints.push_back(*p);
+		rc.reverseWayPaints.push_back(*p);
 		delete p;
 
 		p = oneWayPaint();
 		p->setStrokeWidth(rmin * 4);
 		p->setPathEffect(arrowDashEffect4)->unref();
-		rc->reverseWayPaints.push_back(*p);
+		rc.reverseWayPaints.push_back(*p);
 		delete p;
 	}
 	if (oneway > 0) {
-		for (size_t i = 0; i < rc->oneWayPaints.size(); i++) {
-			PROFILE_NATIVE_OPERATION(rc, cv->drawPath(*p, rc->oneWayPaints.at(i)));
+		for (size_t i = 0; i < rc.oneWayPaints.size(); i++) {
+			PROFILE_NATIVE_OPERATION(rc, cv.drawPath(p, rc.oneWayPaints[i]));
 		}
 	} else {
-		for (size_t i = 0; i < rc->reverseWayPaints.size(); i++) {
-			PROFILE_NATIVE_OPERATION(rc, cv->drawPath(*p, rc->reverseWayPaints.at(i)));
+		for (size_t i = 0; i < rc.reverseWayPaints.size(); i++) {
+			PROFILE_NATIVE_OPERATION(rc, cv.drawPath(p, rc.reverseWayPaints[i]));
 		}
 	}
 }
 
-
-
-void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas* cv, SkPaint* paint,
-	RenderingContext* rc, tag_value pair, int layer, int drawOnlyShadow) {
+void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & cv, SkPaint & paint,
+	RenderingContext & rc, tag_value const & pair, int layer, int drawOnlyShadow) {
 	size_t length = mObj->points.size();
 	if (length < 2) {
 		return;
@@ -400,7 +397,7 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 	std::string tag = pair.first;
 	std::string value = pair.second;
 
-	req->setInitialTagValueZoom(tag, value, rc->getZoom(), mObj);
+	req->setInitialTagValueZoom(tag, value, rc.getZoom(), mObj);
 	req->setIntFilter(req->props()->R_LAYER, layer);
 	bool rendered = req->searchRule(2);
 	if (!rendered || !updatePaint(req, paint, 0, 0, rc)) {
@@ -412,10 +409,10 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 		return;
 	}
 	if(shadowColor == 0) {
-		shadowColor = rc->getShadowRenderingColor();
+		shadowColor = rc.getShadowRenderingColor();
 	}
 	int oneway = 0;
-	if (rc->getZoom() >= 16 && pair.first == "highway") {
+	if (rc.getZoom() >= 16 && pair.first == "highway") {
 		if (mObj->containsAdditional("oneway", "yes")) {
 			oneway = 1;
 		} else if (mObj->containsAdditional("oneway", "-1")) {
@@ -423,7 +420,7 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 		}
 	}
 
-	rc->visible++;
+	rc.visible++;
 	SkPath path;
 	SkPoint middlePoint;
 	bool intersect = false;
@@ -433,15 +430,15 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 	for (; i < length; i++) {
 		calcPoint(mObj->points.at(i), rc);
 		if (i == 0) {
-			path.moveTo(rc->calcX, rc->calcY);
+			path.moveTo(rc.calcX, rc.calcY);
 		} else {
 			if (i == middle) {
-				middlePoint.set(rc->calcX, rc->calcY);
+				middlePoint.set(rc.calcX, rc.calcY);
 			}
-			path.lineTo(rc->calcX, rc->calcY);
+			path.lineTo(rc.calcX, rc.calcY);
 		}
 		if (!intersect) {
-			if (rc->calcX >= 0 && rc->calcY >= 0 && rc->calcX < rc->getWidth() && rc->calcY < rc->getHeight()) {
+			if (rc.calcX >= 0 && rc.calcY >= 0 && rc.calcX < rc.getWidth() && rc.calcY < rc.getHeight()) {
 				intersect = true;
 			} else {
 				uint cross = 0;
@@ -465,26 +462,26 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 
 	if (i > 0) {
 		if (drawOnlyShadow) {
-			drawPolylineShadow(cv, paint, rc, &path, shadowColor, shadowRadius);
+			drawPolylineShadow(cv, paint, rc, path, shadowColor, shadowRadius);
 		} else {
 			if (updatePaint(req, paint, -2, 0, rc)) {
-				PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+				PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 			}
 			if (updatePaint(req, paint, -1, 0, rc)) {
-				PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+				PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 			}
 			if (updatePaint(req, paint, 0, 0, rc)) {
-				PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+				PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 			}
-			PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+			PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 			if (updatePaint(req, paint, 1, 0, rc)) {
-				PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+				PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 			}
 			if (updatePaint(req, paint, 2, 0, rc)) {
-				PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+				PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 			}
 			if (oneway && !drawOnlyShadow) {
-				drawOneWayPaints(rc, cv, &path, oneway);
+				drawOneWayPaints(rc, cv, path, oneway);
 			}
 			if (!drawOnlyShadow) {
 				renderText(mObj, req, rc, pair.first, pair.second, middlePoint.fX, middlePoint.fY, &path);
@@ -515,9 +512,7 @@ int ray_intersect_xo(int prevX, int prevY, int x, int y, int middleY) {
 			// the node on the boundary !!!
 			return x;
 		}
-		// that tested on all cases (left/right)
-		double rx = x + ((double) middleY - y) * ((double) x - prevX) / (((double) y - prevY));
-		return (int) rx;
+		return x + (middleY - y) * (x - prevX) / (y - prevY);
 	}
 }
 // COPIED from MapAlgorithms
@@ -532,9 +527,9 @@ bool ray_intersect_x(int prevX, int prevY, int nx, int ny, int x, int y) {
 	return false;
 }
 
-int countIntersections(vector<pair<int,int> > points, int x, int y) {
+int countIntersections(vector<pair<int,int> > const & points, int x, int y) {
 	int intersections = 0;
-	for (uint i = 0; i < points.size() - 1; i++) {
+	for (size_t i = 0; i < points.size() - 1; i++) {
 		if (ray_intersect_x(points[i].first, points[i].second,
 				points[i + 1].first, points[i + 1].second, x, y)) {
 			intersections++;
@@ -549,20 +544,20 @@ int countIntersections(vector<pair<int,int> > points, int x, int y) {
 	return intersections;
 }
 
-bool contains(vector<pair<int,int> > points, int x, int y) {
+bool contains(vector<pair<int,int> > const & points, int x, int y) {
 	return countIntersections(points, x, y) % 2 == 1;
 }
 
-void drawPolygon(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas* cv, SkPaint* paint,
-	RenderingContext* rc, tag_value pair) {
+void drawPolygon(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & cv, SkPaint & paint,
+	RenderingContext & rc, tag_value const & pair) {
 	size_t length = mObj->points.size();
 	if (length <= 2) {
 		return;
 	}
-	std::string tag = pair.first;
-	std::string value = pair.second;
+	std::string const & tag = pair.first;
+	std::string const & value = pair.second;
 
-	req->setInitialTagValueZoom(tag, value, rc->getZoom(), mObj);
+	req->setInitialTagValueZoom(tag, value, rc.getZoom(), mObj);
 	bool rendered = req->searchRule(3);
 
 	float xText = 0;
@@ -571,45 +566,44 @@ void drawPolygon(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas*
 		return;
 	}
 
-	rc->visible++;
+	rc.visible++;
 	SkPath path;
-	uint i = 0;
 	bool containsPoint = false;
 	int bounds = 0;
 	std::vector< std::pair<int,int > > ps;
-	for (; i < length; i++) {
-		calcPoint(mObj->points.at(i), rc);
+	for (size_t i = 0; i < length; i++) {
+		calcPoint(mObj->points[i], rc);
 		if (i == 0) {
-			path.moveTo(rc->calcX, rc->calcY);
+			path.moveTo(rc.calcX, rc.calcY);
 		} else {
-			path.lineTo(rc->calcX, rc->calcY);
+			path.lineTo(rc.calcX, rc.calcY);
 		}
-		float tx = rc->calcX;
+		float tx = rc.calcX;
 		if (tx < 0) {
 			tx = 0;
 		}
-		if (tx > rc->getWidth()) {
-			tx = rc->getWidth();
+		if (tx > rc.getWidth()) {
+			tx = rc.getWidth();
 		}
-		float ty = rc->calcY;
+		float ty = rc.calcY;
 		if (ty < 0) {
 			ty = 0;
 		}
-		if (ty > rc->getHeight()) {
-			ty = rc->getHeight();
+		if (ty > rc.getHeight()) {
+			ty = rc.getHeight();
 		}
 		xText += tx;
 		yText += ty;
 		if (!containsPoint) {
-			if (rc->calcX >= 0 && rc->calcY >= 0 && rc->calcX < rc->getWidth() && rc->calcY < rc->getHeight()) {
+			if (rc.calcX >= 0 && rc.calcY >= 0 && rc.calcX < rc.getWidth() && rc.calcY < rc.getHeight()) {
 				containsPoint = true;
 			} else {
-				ps.push_back(std::pair<int, int>(rc->calcX, rc->calcY));
+				ps.push_back(std::pair<int, int>(rc.calcX, rc.calcY));
 			}
-			bounds |= (rc->calcX < 0 ? 1 : 0);
-			bounds |= (rc->calcX >= rc->getWidth() ? 2 : 0);
-			bounds |= (rc->calcY >= rc->getHeight()  ? 4 : 0);
-			bounds |= (rc->calcY <= rc->getHeight() ? 8 : 0);
+			bounds |= (rc.calcX < 0 ? 1 : 0);
+			bounds |= (rc.calcX >= rc.getWidth() ? 2 : 0);
+			bounds |= (rc.calcY >= rc.getHeight()  ? 4 : 0);
+			bounds |= (rc.calcY <= rc.getHeight() ? 8 : 0);
 		}
 	}
 	xText /= length;
@@ -620,48 +614,49 @@ void drawPolygon(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas*
 			return;
 		}
 		if(contains(ps, 0, 0) ||
-			contains(ps, rc->getWidth(), rc->getHeight()) ||
-			contains(ps, 0, rc->getHeight()) ||
-			contains(ps, rc->getWidth(), 0)) {
-			if(contains(ps, rc->getWidth() / 2, rc->getHeight() / 2)) {
-				xText = rc->getWidth() / 2;
-				yText = rc->getHeight() / 2;
+			contains(ps, rc.getWidth(), rc.getHeight()) ||
+			contains(ps, 0, rc.getHeight()) ||
+			contains(ps, rc.getWidth(), 0)) {
+			if(contains(ps, rc.getWidth() / 2, rc.getHeight() / 2)) {
+				xText = rc.getWidth() / 2;
+				yText = rc.getHeight() / 2;
 			}
 		} else {
 			return;
 		}
 	}
-	std::vector<coordinates> polygonInnerCoordinates = mObj->polygonInnerCoordinates;
-	if (polygonInnerCoordinates.size() > 0) {
+	std::vector<coordinates> const & polygonInnerCoordinates = mObj->polygonInnerCoordinates;
+	if (!polygonInnerCoordinates.empty()) {
 		path.setFillType(SkPath::kEvenOdd_FillType);
-		for (uint j = 0; j < polygonInnerCoordinates.size(); j++) {
-			coordinates cs = polygonInnerCoordinates.at(j);
-			for (uint i = 0; i < cs.size(); i++) {
-				calcPoint(cs[i], rc);
-				if (i == 0) {
-					path.moveTo(rc->calcX, rc->calcY);
-				} else {
-					path.lineTo(rc->calcX, rc->calcY);
+		for (size_t j = 0; j < polygonInnerCoordinates.size(); j++) {
+			coordinates const & cs = polygonInnerCoordinates[j];
+			if (!cs.empty())
+			{
+				calcPoint(cs[0], rc);
+				path.moveTo(rc.calcX, rc.calcY);
+				for (size_t i = 1; i < cs.size(); i++) {
+					calcPoint(cs[i], rc);
+					path.lineTo(rc.calcX, rc.calcY);
 				}
 			}
 		}
 	}
 
-	PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+	PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 	if (updatePaint(req, paint, 1, 0, rc)) {
-		PROFILE_NATIVE_OPERATION(rc, cv->drawPath(path, *paint));
+		PROFILE_NATIVE_OPERATION(rc, cv.drawPath(path, paint));
 	}
 
 	renderText(mObj, req, rc, pair.first, pair.second, xText, yText, NULL);
 }
 
-void drawPoint(MapDataObject* mObj,	RenderingRuleSearchRequest* req, SkCanvas* cv, SkPaint* paint,
-	RenderingContext* rc, std::pair<std::string, std::string>  pair, bool renderTxt)
+void drawPoint(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & cv, SkPaint const & paint,
+	RenderingContext & rc, std::pair<std::string, std::string> const & pair, bool renderTxt)
 {
-	std::string tag = pair.first;
-	std::string value = pair.second;
+	std::string const & tag = pair.first;
+	std::string const & value = pair.second;
 
-	req->setInitialTagValueZoom(tag, value, rc->getZoom(), mObj);
+	req->setInitialTagValueZoom(tag, value, rc.getZoom(), mObj);
 	req->searchRule(1);
 	std::string resId = req->getStringPropertyValue(req-> props()-> R_ICON);
 	SkBitmap* bmp = getCachedBitmap(rc, resId);
@@ -670,14 +665,13 @@ void drawPoint(MapDataObject* mObj,	RenderingRuleSearchRequest* req, SkCanvas* c
 		return;
 	
 	size_t length = mObj->points.size();
-	rc->visible++;
+	rc.visible++;
 	float px = 0;
 	float py = 0;
-	uint i = 0;
-	for (; i < length; i++) {
-		calcPoint(mObj->points.at(i), rc);
-		px += rc->calcX;
-		py += rc->calcY;
+	for (size_t i = 0; i < length; i++) {
+		calcPoint(mObj->points[i], rc);
+		px += rc.calcX;
+		py += rc.calcY;
 	}
 	if (length > 1) {
 		px /= length;
@@ -690,23 +684,21 @@ void drawPoint(MapDataObject* mObj,	RenderingRuleSearchRequest* req, SkCanvas* c
 		ico.y = py;
 		ico.bmp = bmp;
 		ico.order = req->getIntPropertyValue(req-> props()-> R_ICON_ORDER, 100);
-		rc->iconsToDraw.push_back(ico);
+		rc.iconsToDraw.push_back(ico);
 	}
 	if (renderTxt) {
 		renderText(mObj, req, rc, pair.first, pair.second, px, py, NULL);
 	}
-
 }
 
-void drawObject(RenderingContext* rc,  SkCanvas* cv, RenderingRuleSearchRequest* req,
-	SkPaint* paint, vector<MapDataObjectPrimitive>& array, int objOrder) {
-	//double polygonLimit = 100;
-	//float orderToSwitch = 0;
-	double minPolygonSize = 1. / rc->polygonMinSizeToDisplay;
-	for (uint i = 0; i < array.size(); i++) {
-		rc->allObjects++;
+void drawObject(RenderingContext & rc, SkCanvas & cv, RenderingRuleSearchRequest* req,
+	SkPaint & paint, vector<MapDataObjectPrimitive>& array, int objOrder) {
+
+	double minPolygonSize = 1. / rc.polygonMinSizeToDisplay;
+	for (size_t i = 0; i < array.size(); i++) {
+		rc.allObjects++;
 		MapDataObject* mObj = array[i].obj;
-		tag_value pair = mObj->types.at(array[i].typeInd);
+		tag_value const & pair = mObj->types[array[i].typeInd];
 		if (objOrder == 0) {
 			if (array[i].order > minPolygonSize + ((int) array[i].order)) {
 				continue;
@@ -718,16 +710,17 @@ void drawObject(RenderingContext* rc,  SkCanvas* cv, RenderingRuleSearchRequest*
 		} else if (objOrder == 3) {
 			drawPoint(mObj, req, cv, paint, rc, pair, array[i].typeInd == 0);
 		}
-		if (i % 25 == 0 && rc->interrupted()) {
+		if (i % 25 == 0 && rc.interrupted()) {
 			return;
 		}
 	}
 }
-bool iconOrder(IconDrawInfo text1, IconDrawInfo text2) {
+
+bool iconOrder(IconDrawInfo const & text1, IconDrawInfo const & text2) {
 	return text1.order < text2.order;
 }
 
-void drawIconsOverCanvas(RenderingContext* rc, SkCanvas* canvas)
+void drawIconsOverCanvas(RenderingContext & rc, SkCanvas & canvas)
 {
 	std::sort(rc->iconsToDraw.begin(), rc->iconsToDraw.end(), iconOrder);
 	SkRect bounds = SkRect::MakeLTRB(0, 0, rc->getWidth(), rc->getHeight());
@@ -781,10 +774,10 @@ double polygonArea(MapDataObject* obj, float mult) {
 	return std::abs(area) * mult * mult * .5;
 }
 
-void filterLinesByDensity(RenderingContext* rc, std::vector<MapDataObjectPrimitive>&  linesResArray,
-		std::vector<MapDataObjectPrimitive>& linesArray) {
-	int roadsLimit = rc->roadsDensityLimitPerTile;
-	int densityZ = rc->roadDensityZoomTile;
+void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObjectPrimitive>& linesResArray,
+		std::vector<MapDataObjectPrimitive> const & linesArray) {
+	int roadsLimit = rc.roadsDensityLimitPerTile;
+	int densityZ = rc.roadDensityZoomTile;
 	if(densityZ == 0 || roadsLimit == 0) {
 		linesResArray = linesArray;
 		return;
@@ -795,12 +788,12 @@ void filterLinesByDensity(RenderingContext* rc, std::vector<MapDataObjectPrimiti
 		bool accept = true;
 		int o = linesArray[i].order;
 		MapDataObject* line = linesArray[i].obj;
-		tag_value& ts = line->types[linesArray[i].typeInd];
+		tag_value const & ts = line->types[linesArray[i].typeInd];
 		if (ts.first == "highway") {
 			accept = false;
 			int64_t prev = 0;
-			for (uint k = 0; k < line->points.size(); k++) {
-				int dz = rc->getZoom() + densityZ;
+			for (size_t k = 0; k < line->points.size(); k++) {
+				int dz = rc.getZoom() + densityZ;
 				int64_t x = (line->points[k].first) >> (31 - dz);
 				int64_t y = (line->points[k].second) >> (31 - dz);
 				int64_t tl = (x << dz) + y;
@@ -811,7 +804,7 @@ void filterLinesByDensity(RenderingContext* rc, std::vector<MapDataObjectPrimiti
 						accept = true;
 						p.first++;
 						p.second = o;
-						densityMap[tl] = p;
+						densityMap[tl] = p; // p is a reference, Do the values ​​have not changed before?
 					}
 				}
 			}
@@ -822,6 +815,7 @@ void filterLinesByDensity(RenderingContext* rc, std::vector<MapDataObjectPrimiti
 	}
 	reverse(linesResArray.begin(), linesResArray.end());
 }
+
 bool sortByOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j) {
 	if( i.order == j.order) {
 		if(i.typeInd == j.typeInd) {
@@ -829,36 +823,38 @@ bool sortByOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j
 		}
 		return i.typeInd < j.typeInd;
 	}
-	return (i.order<j.order); }
-bool sortPolygonsOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j) {
-	if( i.order == j.order) return i.typeInd < j.typeInd;
-	return (i.order>j.order); }
+	return (i.order<j.order);
+}
 
-void sortObjectsByProperOrder(std::vector <MapDataObject* > mapDataObjects,
-	RenderingRuleSearchRequest* req, RenderingContext* rc,
-		std::vector<MapDataObjectPrimitive>&  polygonsArray, std::vector<MapDataObjectPrimitive>&  pointsArray,
-		std::vector<MapDataObjectPrimitive>&  linesResArray) {
+bool sortPolygonsOrder(const MapDataObjectPrimitive& i, const MapDataObjectPrimitive& j) {
+	if( i.order == j.order) return i.typeInd < j.typeInd;
+	return (i.order>j.order);
+}
+
+void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjects,
+	RenderingRuleSearchRequest* req, RenderingContext & rc,
+		std::vector<MapDataObjectPrimitive>& polygonsArray, std::vector<MapDataObjectPrimitive>& pointsArray,
+		std::vector<MapDataObjectPrimitive>& linesResArray) {
 	if (req != NULL) {
-		std::vector<MapDataObjectPrimitive>  linesArray;
+		std::vector<MapDataObjectPrimitive> linesArray;
 		req->clearState();
-		const uint size = mapDataObjects.size();
-		float mult = 1. / getPowZoom(max(31 - (rc->getZoom() + 8), 0));
-		uint i = 0;
+		const int size = mapDataObjects.size();
+		float mult = 1. / getPowZoom(max(31 - (rc.getZoom() + 8), 0));
+		int i = 0;
 		for (; i < size; i++) {
 			MapDataObject* mobj = mapDataObjects[i];
 			size_t sizeTypes = mobj->types.size();
 			size_t j = 0;
 			for (; j < sizeTypes; j++) {
 				int layer = mobj->getSimpleLayer();
-				tag_value pair = mobj->types[j];
-				req->setTagValueZoomLayer(pair.first, pair.second, rc->getZoom(), layer, mobj);
+				tag_value const & pair = mobj->types[j];
+				req->setTagValueZoomLayer(pair.first, pair.second, rc.getZoom(), layer, mobj);
 				req->setIntFilter(req->props()->R_AREA, mobj->area);
 				req->setIntFilter(req->props()->R_POINT, mobj->points.size() == 1);
 				req->setIntFilter(req->props()->R_CYCLE, mobj->cycle());
 				if (req->searchRule(RenderingRulesStorage::ORDER_RULES)) {
 					int objectType = req->getIntPropertyValue(req->props()->R_OBJECT_TYPE);
 					int order = req->getIntPropertyValue(req->props()->R_ORDER);
-					// int l = req->getIntPropertyValue(req->props()->R_LAYER);
 					MapDataObjectPrimitive mapObj;
 					mapObj.objectType = objectType;
 					mapObj.order = order;
@@ -880,12 +876,11 @@ void sortObjectsByProperOrder(std::vector <MapDataObject* > mapDataObjects,
 						linesArray.push_back(mapObj);
 					}
 					if (req->getIntPropertyValue(req->props()->R_SHADOW_LEVEL) > 0) {
-						rc->shadowLevelMin = std::min(rc->shadowLevelMin, order);
-						rc->shadowLevelMax = std::max(rc->shadowLevelMax, order);
+						rc.shadowLevelMin = std::min(rc.shadowLevelMin, order);
+						rc.shadowLevelMax = std::max(rc.shadowLevelMax, order);
 						req->clearIntvalue(req->props()->R_SHADOW_LEVEL);
 					}
 				}
-
 			}
 		}
 		sort(polygonsArray.begin(), polygonsArray.end(), sortByOrder);
@@ -895,40 +890,39 @@ void sortObjectsByProperOrder(std::vector <MapDataObject* > mapDataObjects,
 	}
 }
 
-void doRendering(std::vector <MapDataObject* > mapDataObjects, SkCanvas* canvas,
+void doRendering(std::vector <MapDataObject* > const & mapDataObjects, SkCanvas & canvas,
 		RenderingRuleSearchRequest* req,
-		RenderingContext* rc) {
-	rc->nativeOperations.Start();
-	SkPaint* paint = new SkPaint;
-	paint->setAntiAlias(true);
+		RenderingContext & rc) {
+	rc.nativeOperations.Start();
+	SkPaint paint;
+	paint.setAntiAlias(true);
 
 	std::vector<MapDataObjectPrimitive>  polygonsArray;
 	std::vector<MapDataObjectPrimitive>  pointsArray;
 	std::vector<MapDataObjectPrimitive>  linesArray;
 	sortObjectsByProperOrder(mapDataObjects, req, rc, polygonsArray, pointsArray, linesArray);
-	rc->lastRenderedKey = 0;
+	rc.lastRenderedKey = 0;
 
 	drawObject(rc, canvas, req, paint, polygonsArray, 0);
-	rc->lastRenderedKey = 5;
-	if (rc->getShadowRenderingMode() > 1) {
+	rc.lastRenderedKey = 5;
+	if (rc.getShadowRenderingMode() > 1) {
 		drawObject(rc, canvas, req, paint, linesArray, 1);
 	}
-	rc->lastRenderedKey = 40;
+	rc.lastRenderedKey = 40;
 	drawObject(rc, canvas, req, paint, linesArray, 2);
-	rc->lastRenderedKey = 60;
+	rc.lastRenderedKey = 60;
 
 	drawObject(rc, canvas, req, paint, pointsArray, 3);
-	rc->lastRenderedKey = 125;
+	rc.lastRenderedKey = 125;
 
 	drawIconsOverCanvas(rc, canvas);
 
-	rc->textRendering.Start();
+	rc.textRendering.Start();
 	drawTextOverCanvas(rc, canvas);
-	rc->textRendering.Pause();
+	rc.textRendering.Pause();
 
-	delete paint;
-	rc->nativeOperations.Pause();
+	rc.nativeOperations.Pause();
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info,  "Native ok (rendering %d, text %d ms) \n (%d points, %d points inside, %d of %d objects visible)\n",
-				(int)rc->nativeOperations.GetElapsedMs(),	(int)rc->textRendering.GetElapsedMs(),
-				rc->pointCount, rc->pointInsideCount, rc->visible, rc->allObjects);
+				(int)rc.nativeOperations.GetElapsedMs(), (int)rc.textRendering.GetElapsedMs(),
+				rc.pointCount, rc.pointInsideCount, rc.visible, rc.allObjects);
 }

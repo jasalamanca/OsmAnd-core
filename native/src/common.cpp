@@ -49,7 +49,8 @@ bool RenderingContext::interrupted()
 	return false;
 }
 
-SkBitmap* RenderingContext::getCachedBitmap(const std::string& bitmapResource) {
+//// TODO fopen???
+SkBitmap* RenderingContext::getCachedBitmap(const std::string& bitmapResource) const {
 	if (defaultIconsDir.size() > 0) {
 		string fl = string(defaultIconsDir + "h_" + bitmapResource + ".png");
 		FILE* f = fopen(fl.c_str(), "r");
@@ -72,21 +73,20 @@ SkBitmap* RenderingContext::getCachedBitmap(const std::string& bitmapResource) {
 
 
 UNORDERED(map)<std::string, SkBitmap*> cachedBitmaps;
-SkBitmap* getCachedBitmap(RenderingContext* rc, const std::string& bitmapResource)
+SkBitmap* getCachedBitmap(RenderingContext & rc, const std::string& bitmapResource)
 {
-
 	if(bitmapResource.size() == 0)
 		return NULL;
 
 	// Try to find previously cached
-	UNORDERED(map)<std::string, SkBitmap*>::iterator itPreviouslyCachedBitmap = cachedBitmaps.find(bitmapResource);
+	UNORDERED(map)<std::string, SkBitmap*>::const_iterator itPreviouslyCachedBitmap = cachedBitmaps.find(bitmapResource);
 	if (itPreviouslyCachedBitmap != cachedBitmaps.end())
 		return itPreviouslyCachedBitmap->second;
 	
-	rc->nativeOperations.Pause();
-	SkBitmap* iconBitmap = rc->getCachedBitmap(bitmapResource);
+	rc.nativeOperations.Pause();
+	SkBitmap* iconBitmap = rc.getCachedBitmap(bitmapResource);
 	cachedBitmaps[bitmapResource] = iconBitmap;
-	rc->nativeOperations.Start();
+	rc.nativeOperations.Start();
 
 	return iconBitmap;
 }
@@ -98,14 +98,13 @@ void purgeCachedBitmaps() {
 	}
 }
 
-std::string RenderingContext::getTranslatedString(const std::string& src) {
+std::string const & RenderingContext::getTranslatedString(const std::string& src) const {
 	return src;
 }
 
-std::string RenderingContext::getReshapedString(const std::string& src) {
+std::string const & RenderingContext::getReshapedString(const std::string& src) const {
 	return src;
 }
-
 
 double getPowZoom(float zoom){
 	if(zoom >= 0 && zoom - floor(zoom) < 0.05f){

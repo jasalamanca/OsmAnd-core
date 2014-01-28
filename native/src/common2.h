@@ -144,9 +144,9 @@ public:
 	virtual ~RenderingContext();
 
 	virtual bool interrupted();
-	virtual SkBitmap* getCachedBitmap(const std::string& bitmapResource);
-	virtual std::string getTranslatedString(const std::string& src);
-	virtual std::string getReshapedString(const std::string& src);
+	virtual SkBitmap* getCachedBitmap(const std::string& bitmapResource) const;
+	virtual std::string const & getTranslatedString(const std::string& src) const;
+	virtual std::string const & getReshapedString(const std::string& src) const;
 
 	void setDefaultIconsDir(string path) {
 		defaultIconsDir = path;
@@ -181,11 +181,11 @@ public:
 		this->height = height;
 	}
 
-	inline int getShadowRenderingMode(){
+	inline int getShadowRenderingMode() const {
 		return shadowRenderingMode;
 	}
 
-	int getShadowRenderingColor(){
+	int getShadowRenderingColor() const {
 		return shadowRenderingColor;
 	}
 
@@ -193,27 +193,27 @@ public:
 		shadowRenderingColor = color;
 	}
 
-	inline int getWidth(){
+	inline int getWidth() const {
 		return width;
 	}
 
-	inline int getDefaultColor(){
+	inline int getDefaultColor() const {
 		return defaultColor;
 	}
 
-	inline int getHeight(){
+	inline int getHeight() const {
 		return height;
 	}
 
-	inline int getZoom() {
+	inline int getZoom() const {
 		return zoom;
 	}
 
-	inline float getLeft() {
+	inline float getLeft() const {
 		return leftX;
 	}
 
-	inline float getTop() {
+	inline float getTop() const {
 		return topY;
 	}
 
@@ -229,15 +229,15 @@ public:
 		screenDensityRatio = v;
 	}
 
-	float getScreenDensityRatio() {
+	float getScreenDensityRatio() const {
 		return screenDensityRatio;
 	}
 
-	float getDensityValue(float val) {
+	float getDensityValue(float val) const {
 		return val * density;
 	}
 
-	float getDensityValue(float val, int pxValues) {
+	float getDensityValue(float val, int pxValues) const {
 		return val * density + pxValues;
 	}
 
@@ -245,13 +245,12 @@ public:
 		this->useEnglishNames = b;
 	}
 
-	bool isUsingEnglishNames(){
+	bool isUsingEnglishNames() const {
 		return this->useEnglishNames;
 	}
-
 };
 
-SkBitmap* getCachedBitmap(RenderingContext* rc, const std::string& bitmapResource);
+SkBitmap* getCachedBitmap(RenderingContext & rc, const std::string& bitmapResource);
 void purgeCachedBitmaps();
 
 int get31TileNumberX(double longitude);

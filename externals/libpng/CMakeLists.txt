@@ -1,12 +1,22 @@
 project(png)
 
 set(target_specific_sources "")
-if((CMAKE_TARGET_CPU_ARCH STREQUAL "arm") OR (CMAKE_TARGET_OS STREQUAL "ios" AND CMAKE_TARGET_CPU_ARCH STREQUAL "device"))
-	enable_language(ASM)
+
+#TODO: filter_neon.S needs to be patched to support neon
+if(CMAKE_TARGET_OS STREQUAL "ios")
+	add_definitions(-DPNG_ARM_NEON_OPT=0)
+endif()
+if(CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "arm" OR (CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "fat" AND CMAKE_TARGET_OS STREQUAL "ios"))
 	set(target_specific_sources ${target_specific_sources}
 		"upstream.patched/arm/arm_init.c"
 		"upstream.patched/arm/filter_neon.S"
 	)
+	if(CMAKE_TARGET_OS STREQUAL "ios" AND CMAKE_COMPILER_FAMILY STREQUAL "clang")
+		set_source_files_properties(
+			"upstream.patched/arm/filter_neon.S"
+			PROPERTIES
+				COMPILE_FLAGS "-no-integrated-as")
+	endif()
 endif()
 
 add_library(png_static STATIC
@@ -44,3 +54,13 @@ target_link_libraries(png_static
 	LINK_PUBLIC
 		z_static
 )
+
+if(CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "fat" AND CMAKE_TARGET_OS STREQUAL "ios")
+	set(ios_iphonesimulator_exclude_list
+		"arm_init.c"
+		"filter_neon.S")
+	string(REPLACE ";" " " ios_iphonesimulator_exclude "${ios_iphonesimulator_exclude_list}")
+	set_target_properties(skia_static
+		PROPERTIES
+			XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*][arch=*] "${ios_iphonesimulator_exclude}")
+endif()

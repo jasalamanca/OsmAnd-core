@@ -1,21 +1,14 @@
 #ifndef _OSMAND_BINARY_READ_H
 #define _OSMAND_BINARY_READ_H
 
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #if defined(_WIN32)
 #include <io.h>
 #else
 #include <unistd.h>
 #endif
-#include <stdio.h>
-#include <fstream>
 #include <map>
+#include <vector>
 #include <string>
-#include <stdint.h>
-#include "mapObjects.h"
-#include "multipolygons.h"
 #include "Common.h"
 #include "common2.h"
 
@@ -84,8 +77,7 @@ struct BinaryPartIndex {
 };
 
 struct RoutingIndex : BinaryPartIndex {
-//	UNORDERED(map)< uint32_t, tag_value > decodingRules;
-	vector< tag_value > decodingRules;
+	std::vector<tag_value> decodingRules;
 	std::vector<RouteSubregion> subregions;
 	std::vector<RouteSubregion> basesubregions;
 	RoutingIndex() : BinaryPartIndex(ROUTING_INDEX) {
@@ -93,8 +85,6 @@ struct RoutingIndex : BinaryPartIndex {
 
 	void initRouteEncodingRule(uint32_t id, std::string tag, std::string val) {
 		tag_value pair = tag_value(tag, val);
-		// DEFINE hash
-		//encodingRules[pair] = id;
 		while(decodingRules.size() < id + 1){
 			decodingRules.push_back(pair);
 		}
@@ -112,9 +102,9 @@ struct RouteDataObject {
 	int64_t id;
 
 	UNORDERED(map)<int, std::string > names;
-	vector<pair<uint32_t, uint32_t> > namesIds;
+	std::vector<std::pair<uint32_t, uint32_t> > namesIds;
 
-	string getName() {
+	std::string getName() {
 		if(names.size() > 0) {
 			return names.begin()->second;
 		}
@@ -135,8 +125,8 @@ struct RouteDataObject {
 		for(;t!=pointTypes.end(); t++) {
 			s+= (*t).capacity() * sizeof(uint32_t);
 		}
-		s += namesIds.capacity()*sizeof(pair<uint32_t, uint32_t>);
-		s += names.size()*sizeof(pair<int, string>)*10;
+		s += namesIds.capacity()*sizeof(std::pair<uint32_t, uint32_t>);
+		s += names.size()*sizeof(std::pair<int, std::string>)*10;
 		return s;
 	}
 
@@ -244,16 +234,11 @@ struct RouteDataObject {
 	}
 };
 
-
-
 struct MapIndex : BinaryPartIndex {
 
 	std::vector<MapRoot> levels;
 
 	UNORDERED(map)<int, tag_value > decodingRules;
-	// DEFINE hash
-	//UNORDERED(map)<tag_value, int> encodingRules;
-
 	int nameEncodingType;
 	int refEncodingType;
 	int coastlineEncodingType;

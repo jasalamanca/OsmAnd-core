@@ -3,7 +3,6 @@
 
 #include <jni.h>
 #include "java_wrap.h"
-#include "Common.h"
 #include "renderRules.h"
 
 
@@ -42,7 +41,7 @@ jfieldID RenderingRuleSearchRequest_savedValues;
 jfieldID RenderingRuleSearchRequest_savedFvalues;
 
 RenderingRule* createRenderingRule(JNIEnv* env, jobject rRule, RenderingRulesStorage* st) {
-	map<string,string> empty;
+	std::map<std::string,std::string> empty;
 	RenderingRule* rule = new RenderingRule(empty,st);
 	jobjectArray props = (jobjectArray) env->GetObjectField(rRule, RenderingRule_properties);
 	jintArray intProps = (jintArray) env->GetObjectField(rRule, RenderingRule_intProperties);
@@ -190,10 +189,10 @@ void initRenderingRuleSearchRequest(JNIEnv* env, RenderingRuleSearchRequest* r, 
 	jobjectArray oa = (jobjectArray) env->GetObjectField(rrs, RenderingRuleSearchRequest_props);
 	sz = env->GetArrayLength(oa);
 	std::vector<RenderingRuleProperty*> requestProps;
-	vector<int> values;
-	vector<float> fvalues;
-	vector<int> savedValues;
-	vector<float> savedFvalues;
+	std::vector<int> values;
+	std::vector<float> fvalues;
+	std::vector<int> savedValues;
+	std::vector<float> savedFvalues;
 
 	for (jsize i = 0; i < sz; i++) {
 		jobject prop = env->GetObjectArrayElement(oa, i);

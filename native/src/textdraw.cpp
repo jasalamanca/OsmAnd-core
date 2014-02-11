@@ -1,19 +1,13 @@
 #include <vector>
-#include <set>
 #include <algorithm>
-#include <math.h>
-#include <time.h>
-#include "SkTypes.h"
-#include "SkTypeface.h"
-#include "SkCanvas.h"
-#include "SkPaint.h"
-#include "SkPath.h"
 
-#include "Common.h"
+#ifdef ANDROID
+#include <SkTypeface.h>
+#endif
 #include "common2.h"
+#include "Internal.h"
 #include "Logging.h"
 #include "renderRules.h"
-//#include "utf8.cpp"
 #include "utf8/unchecked.h"
 
 

@@ -1,8 +1,7 @@
-#include "Common.h"
 #include "common2.h"
 
-#include <SkPath.h>
-#include <SkBitmap.h>
+//#include <SkPath.h>
+//#include <SkBitmap.h>
 #include <SkImageDecoder.h>
 #include "Logging.h"
 
@@ -14,7 +13,7 @@
 #elif defined(__APPLE__)
 #	include <mach/mach_time.h>|
 #else
-#	include <time.h>
+//#	include <time.h>
 #endif
 
 TextDrawInfo::TextDrawInfo(std::string itext)
@@ -52,10 +51,10 @@ bool RenderingContext::interrupted()
 //// TODO fopen???
 SkBitmap* RenderingContext::getCachedBitmap(const std::string& bitmapResource) const {
 	if (defaultIconsDir.size() > 0) {
-		string fl = string(defaultIconsDir + "h_" + bitmapResource + ".png");
+		std::string fl = std::string(defaultIconsDir + "h_" + bitmapResource + ".png");
 		FILE* f = fopen(fl.c_str(), "r");
 		if (f == NULL) {
-			fl = string(defaultIconsDir + "g_" + bitmapResource + ".png");
+			fl = std::string(defaultIconsDir + "g_" + bitmapResource + ".png");
 			f = fopen(fl.c_str(), "r");
 		}
 		if (f != NULL) {

@@ -1,12 +1,8 @@
 #ifndef _MULTIPOLYGONS_H
 #define _MULTIPOLYGONS_H
 
-#include <stdio.h>
-#include <map>
-#include <set>
+#include <vector>
 
-#include "renderRules.h"
-#include "Common.h"
 #include "common2.h"
 #include "mapObjects.h"
 

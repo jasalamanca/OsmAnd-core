@@ -5,10 +5,12 @@
 #include <vector>
 #include <map>
 
-#include "Common.h"
+//#include "Common.h"
 #include "common2.h"
 #include "mapObjects.h"
 
+
+typedef std::map<std::string, std::string> Attributes;
 
 /**
  * Parse the color string, and return the corresponding color-int.
@@ -16,8 +18,8 @@
  * #RRGGBB
  * #AARRGGBB
  */
-int parseColor(string const & colorString);
-string colorToString(int color);
+int parseColor(std::string const & colorString);
+std::string colorToString(int color);
 
 const static int TRUE_VALUE = 1;
 const static int FALSE_VALUE = 0;
@@ -47,9 +49,9 @@ public:
 	// order in
 	int id;
 	// use for custom rendering rule properties
-	string name;
-	string description;
-	vector<string> possibleValues;
+	std::string name;
+	std::string description;
+	std::vector<std::string> possibleValues;
 
 	RenderingRuleProperty(std::string const & name, int type, bool input, int id = -1) :
 			type(type), input(input), attrName(name), id(id) {
@@ -71,7 +73,7 @@ public:
 		return type == INT_TYPE || type == STRING_TYPE || type == COLOR_TYPE || type == BOOLEAN_TYPE;
 	}
 
-	int parseIntValue(string const & value) {
+	int parseIntValue(std::string const & value) {
 		if (type == INT_TYPE) {
 			size_t colon = value.find_first_of(':');
 			if(colon != std::string::npos) {
@@ -95,7 +97,7 @@ public:
 		}
 	}
 
-	float parseFloatValue(string const & value) {
+	float parseFloatValue(std::string const & value) {
 		if (type == FLOAT_TYPE) {
 			// Use fixed locale.
 			char * oldLocale = setlocale(LC_NUMERIC, NULL);
@@ -123,39 +125,39 @@ public:
 		}
 	}
 
-	static RenderingRuleProperty* createOutputIntProperty(string const & name) {
+	static RenderingRuleProperty* createOutputIntProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, INT_TYPE, false);
 	}
 
-	static RenderingRuleProperty* createOutputBooleanProperty(string const & name) {
+	static RenderingRuleProperty* createOutputBooleanProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, BOOLEAN_TYPE, false);
 	}
 
-	static RenderingRuleProperty* createInputBooleanProperty(string const & name) {
+	static RenderingRuleProperty* createInputBooleanProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, BOOLEAN_TYPE, true);
 	}
 
-	static RenderingRuleProperty* createOutputFloatProperty(string const & name) {
+	static RenderingRuleProperty* createOutputFloatProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, FLOAT_TYPE, false);
 	}
 
-	static RenderingRuleProperty* createOutputStringProperty(string const name) {
+	static RenderingRuleProperty* createOutputStringProperty(std::string const name) {
 		return new RenderingRuleProperty(name, STRING_TYPE, false);
 	}
 
-	static RenderingRuleProperty* createInputIntProperty(string const & name) {
+	static RenderingRuleProperty* createInputIntProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, INT_TYPE, true);
 	}
 
-	static RenderingRuleProperty* createInputColorProperty(string const & name) {
+	static RenderingRuleProperty* createInputColorProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, COLOR_TYPE, true);
 	}
 
-	static RenderingRuleProperty* createOutputColorProperty(string const & name) {
+	static RenderingRuleProperty* createOutputColorProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, COLOR_TYPE, false);
 	}
 
-	static RenderingRuleProperty* createInputStringProperty(string const & name) {
+	static RenderingRuleProperty* createInputStringProperty(std::string const & name) {
 		return new RenderingRuleProperty(name, STRING_TYPE, true);
 	}
 };
@@ -170,22 +172,22 @@ public:
 	std::vector<RenderingRule*> ifElseChildren;
 	std::vector<RenderingRule*> ifChildren;
 
-	RenderingRule(map<string, string> const & attrs, RenderingRulesStorage* storage);
-	void printDebugRenderingRule(string & indent, RenderingRulesStorage const * st) const;
+	RenderingRule(Attributes const & attrs, RenderingRulesStorage* storage);
+	void printDebugRenderingRule(std::string & indent, RenderingRulesStorage const * st) const;
 
 private:
-	int getPropertyIndex(string const & property) const;
+	int getPropertyIndex(std::string const & property) const;
 
 public :
-	string getStringPropertyValue(string const & property, RenderingRulesStorage const * storage) const;
-	float getFloatPropertyValue(string const & property) const;
-	string getColorPropertyValue(string const & property) const;
-	int getIntPropertyValue(string const & property) const;
+	std::string getStringPropertyValue(std::string const & property, RenderingRulesStorage const * storage) const;
+	float getFloatPropertyValue(std::string const & property) const;
+	std::string getColorPropertyValue(std::string const & property) const;
+	int getIntPropertyValue(std::string const & property) const;
 };
 
 class RenderingRulesStorageResolver {
 public:
-	virtual RenderingRulesStorage* resolve(string name, RenderingRulesStorageResolver* ref) = 0;
+	virtual RenderingRulesStorage* resolve(std::string name, RenderingRulesStorageResolver* ref) = 0;
 
 	virtual ~RenderingRulesStorageResolver() {}
 };
@@ -254,9 +256,9 @@ public:
 	RenderingRuleProperty* R_ATTR_BOOL_VALUE;
 	RenderingRuleProperty* R_ATTR_STRING_VALUE;
 
-	UNORDERED(map)<string, RenderingRuleProperty*> properties;
-	vector<RenderingRuleProperty*> rules;
-	vector<RenderingRuleProperty*> customRules;
+	UNORDERED(map)<std::string, RenderingRuleProperty*> properties;
+	std::vector<RenderingRuleProperty*> rules;
+	std::vector<RenderingRuleProperty*> customRules;
 
 	inline RenderingRuleProperty* getProperty(const char* st) {
 		UNORDERED(map)<std::string, RenderingRuleProperty*>::iterator i = properties.find(st);
@@ -285,7 +287,7 @@ public:
 	}
 
 	void merge(RenderingRulesStorageProperties& props) {
-		vector<RenderingRuleProperty*>::iterator t = props.customRules.begin();
+		std::vector<RenderingRuleProperty*>::iterator t = props.customRules.begin();
 		for (; t != props.customRules.end(); t++) {
 			customRules.push_back(*t);
 			properties[(*t)->attrName] = *t;
@@ -299,7 +301,7 @@ public:
 	}
 
 	~RenderingRulesStorageProperties() {
-		vector<RenderingRuleProperty*>::iterator it = rules.begin();
+		std::vector<RenderingRuleProperty*>::iterator it = rules.begin();
 		for (; it != rules.end(); it++) {
 			delete *it;
 		}
@@ -389,8 +391,8 @@ public:
 		R_SHADOW_RADIUS = registerRuleInternal(RenderingRuleProperty::createOutputIntProperty("shadowRadius"));
 	}
 };
-static string A_DEFAULT_COLOR="defaultColor";
-static string A_SHADOW_RENDERING="shadowRendering";
+static std::string A_DEFAULT_COLOR="defaultColor";
+static std::string A_SHADOW_RENDERING="shadowRendering";
 
 class RenderingRulesStorage
 {
@@ -403,8 +405,8 @@ private:
 public:
 	const static int SIZE_STATES = 7;
 	UNORDERED(map)<int, RenderingRule*>* tagValueGlobalRules;
-	map<std::string, RenderingRule*> renderingAttributes;
-	map<std::string, std::string> renderingConstants;
+	std::map<std::string, RenderingRule*> renderingAttributes;
+	std::map<std::string, std::string> renderingConstants;
 	std::vector<RenderingRule*> childRules;
 public:
 	RenderingRulesStorageProperties PROPS;
@@ -437,7 +439,7 @@ public:
 
 	void registerGlobalRule(RenderingRule* rr, int state);
 
-	int registerString(string const & d) {
+	int registerString(std::string const & d) {
 		int res;
 		dictionaryMap[d] = res = dictionary.size();
 		dictionary.push_back(d);
@@ -462,11 +464,11 @@ public:
 
 	void parseRulesFromXmlInputStream(const char* filename, RenderingRulesStorageResolver* resolver);
 
-	RenderingRule* getRenderingAttributeRule(string const & attribute) {
+	RenderingRule* getRenderingAttributeRule(std::string const & attribute) {
 		return renderingAttributes[attribute];
 	}
 
-	inline string const & getStringValue(int i) const {
+	inline std::string const & getStringValue(int i) const {
 		return dictionary[i];
 	}
 
@@ -476,15 +478,15 @@ private:
 	RenderingRule* createTagValueRootWrapperRule(int tagValueKey, RenderingRule* previous);
 
 
-	inline string const & getValueString(int tagValueKey) const {
+	inline std::string const & getValueString(int tagValueKey) const {
 		return getStringValue(tagValueKey & ((1 << SHIFT_TAG_VAL) - 1));
 	}
 
-	inline string const & getTagString(int tagValueKey) const {
+	inline std::string const & getTagString(int tagValueKey) const {
 		return getStringValue(tagValueKey >> SHIFT_TAG_VAL);
 	}
 
-	inline int getTagValueKey(string const & tag, string const & value) {
+	inline int getTagValueKey(std::string const & tag, std::string const & value) {
 		int itag = getDictionaryValue(tag);
 		int ivalue = getDictionaryValue(value);
 		return (itag << SHIFT_TAG_VAL) | ivalue;
@@ -495,10 +497,10 @@ class RenderingRuleSearchRequest
 {
 private :
 	RenderingRulesStorageProperties* PROPS;
-	vector<int> values;
-	vector<float> fvalues;
-	vector<int> savedValues;
-	vector<float> savedFvalues;
+	std::vector<int> values;
+	std::vector<float> fvalues;
+	std::vector<int> savedValues;
+	std::vector<float> savedFvalues;
 	bool searchResult;
 	MapDataObject* obj;
 
@@ -550,21 +552,21 @@ public:
 
 	void printDebugResult() const;
 
-	void externalInitialize(vector<int> const & vs, vector<float> const & fvs,
-			vector<int> const & sVs, vector<float> const & sFvs);
+	void externalInitialize(std::vector<int> const & vs, std::vector<float> const & fvs,
+			std::vector<int> const & sVs, std::vector<float> const & sFvs);
 
 	bool isSpecified(RenderingRuleProperty const * p) const;
 
-	bool searchRenderingAttribute(string const & attribute);
+	bool searchRenderingAttribute(std::string const & attribute);
 };
 
 
 class BasePathRenderingRulesStorageResolver : public RenderingRulesStorageResolver {
 public:
-	string path;
-	BasePathRenderingRulesStorageResolver(string const & path) : path(path) {	}
-	virtual RenderingRulesStorage* resolve(string const & name, RenderingRulesStorageResolver* ref) {
-		string file = path;
+	std::string path;
+	BasePathRenderingRulesStorageResolver(std::string const & path) : path(path) {	}
+	virtual RenderingRulesStorage* resolve(std::string const & name, RenderingRulesStorageResolver* ref) {
+		std::string file = path;
 		file += name;
 		file+=".render.xml";
 		RenderingRulesStorage* st = new RenderingRulesStorage(file.c_str());

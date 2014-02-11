@@ -1,30 +1,16 @@
-#include <math.h>
-#include <stdio.h>
-#include <vector>
-#include <algorithm>
-#include <set>
-#include <time.h>
-
-#include <SkTypes.h>
-#include <SkBitmap.h>
 #include <SkCanvas.h>
 #include <SkColorFilter.h>
-#include <SkShader.h>
 #include <SkBitmapProcShader.h>
 #include <SkPathEffect.h>
 #include <SkBlurDrawLooper.h>
 #include <SkDashPathEffect.h>
 #include <SkPaint.h>
-#include <SkPath.h>
 
-#include "Common.h"
-#include "common2.h"
-#include "renderRules.h"
-#include "binaryRead.h"
 #include "textdraw.cpp"
 #include "mapObjects.h"
 #include "rendering.h"
 #include "Logging.h"
+#include "Internal.h"
 
 const int MAX_V = 75;
 
@@ -66,7 +52,7 @@ SkPathEffect* getDashEffect(RenderingContext const & rc, std::string const & inp
     int i = 0;
     char fval[10];
     int flength = 0;
-    vector<float> primFloats;
+    std::vector<float> primFloats;
     bool afterColon = false;
     std::string hash = "";
     for(;;i++) {
@@ -527,7 +513,7 @@ bool ray_intersect_x(int prevX, int prevY, int nx, int ny, int x, int y) {
 	return false;
 }
 
-int countIntersections(vector<pair<int,int> > const & points, int x, int y) {
+int countIntersections(std::vector<std::pair<int,int> > const & points, int x, int y) {
 	int intersections = 0;
 	for (size_t i = 0; i < points.size() - 1; i++) {
 		if (ray_intersect_x(points[i].first, points[i].second,
@@ -544,7 +530,7 @@ int countIntersections(vector<pair<int,int> > const & points, int x, int y) {
 	return intersections;
 }
 
-bool contains(vector<pair<int,int> > const & points, int x, int y) {
+bool contains(std::vector<std::pair<int,int> > const & points, int x, int y) {
 	return countIntersections(points, x, y) % 2 == 1;
 }
 
@@ -692,7 +678,7 @@ void drawPoint(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & 
 }
 
 void drawObject(RenderingContext & rc, SkCanvas & cv, RenderingRuleSearchRequest* req,
-	SkPaint & paint, vector<MapDataObjectPrimitive>& array, int objOrder) {
+	SkPaint & paint, std::vector<MapDataObjectPrimitive>& array, int objOrder) {
 
 	double minPolygonSize = 1. / rc.polygonMinSizeToDisplay;
 	for (size_t i = 0; i < array.size(); i++) {
@@ -783,7 +769,7 @@ void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObject
 		return;
 	}
 	linesResArray.reserve(linesArray.size());
-	UNORDERED(map)<int64_t, pair<int, int> > densityMap;
+	UNORDERED(map)<int64_t, std::pair<int, int> > densityMap;
 	for (int i = linesArray.size() - 1; i >= 0; i--) {
 		bool accept = true;
 		int o = linesArray[i].order;
@@ -799,7 +785,7 @@ void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObject
 				int64_t tl = (x << dz) + y;
 				if (prev != tl) {
 					prev = tl;
-					pair<int, int>& p = densityMap[tl];
+					std::pair<int, int>& p = densityMap[tl];
 					if (p.first < roadsLimit/* && p.second > o */) {
 						accept = true;
 						p.first++;

@@ -2,7 +2,9 @@
 #define _JAVA_WRAP_H
 
 #include "jni.h"
+#include <string>
 #include "binaryRead.h"
+#include <SkBitmap.h>
 #include "Logging.h"
 
 
@@ -26,7 +28,7 @@ struct JNIRenderingContext : RenderingContext
 {
 	jobject javaRenderingContext;
 	JNIEnv* env;
-	JNIRenderingContext() : javaRenderingContext(NULL){
+	JNIRenderingContext() : javaRenderingContext(NULL), env(NULL){
 	}
 
 	virtual SkBitmap* getCachedBitmap(const std::string& bitmapResource);

@@ -1,14 +1,17 @@
 #ifndef _OSMAND_BINARY_ROUTE_PLANNER_H
 #define _OSMAND_BINARY_ROUTE_PLANNER_H
+
 #include "Common.h"
 #include "common2.h"
 #include "binaryRead.h"
+
+// Implementation
 #include <algorithm>
 #include "Logging.h"
 #include "generalRouter.h"
 
-typedef UNORDERED(map)<string, float> MAP_STR_FLOAT;
-typedef UNORDERED(map)<string, string> MAP_STR_STR;
+typedef UNORDERED(map)<std::string, float> MAP_STR_FLOAT;
+typedef UNORDERED(map)<std::string, std::string> MAP_STR_STR;
 
 struct RouteSegment {
 	int segmentStart;
@@ -100,8 +103,7 @@ struct RouteSegmentResult {
 	int startPointIndex;
 	int endPointIndex;
 	float routingTime;
-	vector<vector<RouteSegmentResult> > attachedRoutes;
-
+	std::vector<std::vector<RouteSegmentResult> > attachedRoutes;
 	RouteSegmentResult(SHARED_PTR<RouteDataObject> const & object, int startPointIndex, int endPointIndex) :
 		object(object), startPointIndex(startPointIndex), endPointIndex (endPointIndex), routingTime(0) {
 	}
@@ -174,7 +176,7 @@ static inline int64_t calcRouteId(SHARED_PTR<RouteDataObject const> const & o, i
 	return ((int64_t) o->id << 10) + ind;
 }
 
-typedef std::pair<int, std::pair<string, string> > ROUTE_TRIPLE;
+typedef std::pair<int, std::pair<std::string, std::string> > ROUTE_TRIPLE;
 struct RoutingConfiguration {
 	GeneralRouter router;
 
@@ -200,7 +202,7 @@ struct RoutingConfiguration {
 			memoryLimitation(memLimit), initialDirection(initDirection) {
 /******
 	public:
-	RoutingConfiguration(vector<ROUTE_TRIPLE> const & config, float initDirection = -360, int memLimit = 48)
+	RoutingConfiguration(std::vector<ROUTE_TRIPLE> const & config, float initDirection = -360, int memLimit = 48)
 	: memoryLimitation(memLimit), initialDirection(initDirection) {
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "LC_ALL %s", setlocale(LC_ALL, NULL));
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "LC_NUMERIC %s", setlocale(LC_NUMERIC, NULL));
@@ -257,7 +259,7 @@ struct RoutingConfiguration {
 		return true;
 	}
 
-	string const & getHighway(SHARED_PTR<RouteDataObject> const & r) const {
+	std::string const & getHighway(SHARED_PTR<RouteDataObject> const & r) const {
 		static std::string const emptyString = "";
 		std::vector<uint32_t>::const_iterator t = r->types.begin();
 		for(; t != r->types.end(); t++) {
@@ -297,7 +299,7 @@ struct RoutingConfiguration {
 		for(; t != r->types.end(); t++) {
 			tag_value const & type = r->region->decodingRules[*t];
 			if(type.first == "oneway") {
-				string const & v = type.second;
+				std::string const & v = type.second;
 				if("-1" ==v || "reverse" == v) {
 					return -1;
 				} else if("1" == v || "yes" == v) {
@@ -373,7 +375,7 @@ struct RoutingConfiguration {
 		return 0;
 	}
 
-	float getHighwaySpeed(string const & key) const {
+	float getHighwaySpeed(std::string const & key) const {
 		MAP_STR_FLOAT::const_iterator hS = highwaySpeed.find(key);
 		if(hS != highwaySpeed.end()) {
 			return hS->second;
@@ -391,7 +393,7 @@ struct RoutingConfiguration {
 		std::vector<uint32_t>::const_iterator t = r->types.begin();
 		for(; t != r->types.end(); t++) {
 			tag_value const & type = r->region->decodingRules[*t];
-			string key = type.first+"$"+type.second;
+			std::string key = type.first+"$"+type.second;
 			float f = getHighwaySpeed(key);
 			if(f > 0) {
 				return f / 3.6;
@@ -430,8 +432,8 @@ public:
 
 	virtual void updateStatus(float distanceFromBegin,	int directSegmentQueueSize,	float distanceFromEnd,
 			int reverseSegmentQueueSize) {
-		this->distanceFromBegin = max(distanceFromBegin, this->distanceFromBegin );
-		this->distanceFromEnd = max(distanceFromEnd,this->distanceFromEnd);
+		this->distanceFromBegin = std::max(distanceFromBegin, this->distanceFromBegin );
+		this->distanceFromEnd = std::max(distanceFromEnd,this->distanceFromEnd);
 		this->directSegmentQueueSize = directSegmentQueueSize;
 		this->reverseSegmentQueueSize = reverseSegmentQueueSize;
 	}
@@ -509,7 +511,7 @@ struct RoutingContext {
 
 	int getSize() const {
 		// multiply 2 for to maps
-		int sz = subregionTiles.size() * sizeof(pair< int64_t, SHARED_PTR<RoutingSubregionTile> >)  * 2;
+		int sz = subregionTiles.size() * sizeof(std::pair< int64_t, SHARED_PTR<RoutingSubregionTile> >)  * 2;
 		MAP_SUBREGION_TILES::const_iterator it = subregionTiles.begin();
 		for(;it != subregionTiles.end(); it++) {
 			sz += it->second->getSize();
@@ -525,7 +527,7 @@ struct RoutingContext {
 		}
 		float occupiedBefore = sz / (1024. * 1024.);
 		float desirableSize = memoryLimit * 0.7f * 1024 * 1024;
-		vector<SHARED_PTR<RoutingSubregionTile> > list;
+		std::vector<SHARED_PTR<RoutingSubregionTile> > list;
 		MAP_SUBREGION_TILES::iterator it = subregionTiles.begin();
 		int loaded = 0;
 		int unloadedTiles = 0;
@@ -553,7 +555,7 @@ struct RoutingContext {
 	}
 
 	void loadHeaderObjects(int64_t tileId) {
-		vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
+		std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
 		bool gc = false;
 		for(size_t j = 0; j<subregions.size() && !gc; j++) {
 			if(!subregions[j]->isLoaded()) {
@@ -568,9 +570,9 @@ struct RoutingContext {
 				loadedTiles++;
 				subregions[j]->setLoaded();
 				SearchQuery q;
-				vector<RouteDataObject*> res;
+				std::vector<RouteDataObject*> res;
 				searchRouteDataForSubRegion(&q, res, &subregions[j]->subregion);
-				vector<RouteDataObject*>::iterator i = res.begin();
+				std::vector<RouteDataObject*>::iterator i = res.begin();
 				for(;i!=res.end(); i++) {
 					if(*i != NULL) {
 						SHARED_PTR<RouteDataObject> o(*i);
@@ -610,7 +612,7 @@ struct RoutingContext {
 
 	void reregisterRouteDataObject(SHARED_PTR<RouteDataObject> o, int segmentStart, uint32_t x, uint32_t y);
 
-	void loadTileData(int x31, int y31, int zoomAround, vector<SHARED_PTR<RouteDataObject> >& dataObjects ) {
+	void loadTileData(int x31, int y31, int zoomAround, std::vector<SHARED_PTR<RouteDataObject> > & dataObjects) {
 		UNORDERED(set)<int64_t> ids;
 		// First search on new road. Newer the better.
 		for (int i = registered.size()-1; i >= 0; --i)
@@ -639,7 +641,7 @@ struct RoutingContext {
 				uint32_t yloc = (y31+j*coordinatesShift) >> (31 - z);
 				int64_t tileId = (xloc << z) + yloc;
 				loadHeaders(xloc, yloc);
-				vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
+				std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
 				for(size_t j = 0; j<subregions.size(); j++) {
 					if(subregions[j]->isLoaded()) {
 						UNORDERED(map)<int64_t, SHARED_PTR<RouteSegment> >::const_iterator s = subregions[j]->routes.begin();
@@ -689,7 +691,7 @@ struct RoutingContext {
 		int64_t tileId = (xloc << z) + yloc;
 		uint64_t l = (((uint64_t) x31) << 31) + (uint64_t) y31;
 		loadHeaders(xloc, yloc);
-		vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
+		std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
 		for(size_t j = 0; j<subregions.size(); j++) {
 			if(subregions[j]->isLoaded()) {
 				SHARED_PTR<RouteSegment> segment = subregions[j]->routes[l];
@@ -735,5 +737,5 @@ struct RoutingContext {
 };
 
 
-vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool leftSideNavigation);
+std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool leftSideNavigation);
 #endif /*_OSMAND_BINARY_ROUTE_PLANNER_H*/

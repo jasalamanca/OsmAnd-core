@@ -1,14 +1,13 @@
+#include "java_wrap.h"
 #ifdef ANDROID_BUILD
 #include <dlfcn.h>
 #endif
-#include <SkBitmap.h>
 #include <SkCanvas.h>
 #include <SkImageDecoder.h>
 #include <SkImageEncoder.h>
 #include <SkStream.h>
 #include "java_renderRules.h"
 #include "Common.h"
-#include "java_wrap.h"
 #include "binaryRead.h"
 #include "rendering.h"
 #include "binaryRoutePlanner.h"
@@ -966,7 +965,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRo
 		jobjectArray regions, jobject progress, jobject precalculatedRoute, bool basemap) {
 	RoutingConfiguration config(initDirection);
 	parseRouteConfiguration(ienv, config, jRouteConfig);
-	RoutingContext c(&config);
+	RoutingContext c(config);
 	c.progress = SHARED_PTR<RouteCalculationProgress>(new RouteCalculationProgressWrapper(ienv, progress));
 	int* data = (int*)ienv->GetIntArrayElements(coordinates, NULL);
 	c.startX = data[0];
@@ -976,7 +975,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRo
 	c.basemap = basemap;
 	parsePrecalculatedRoute(ienv, c, precalculatedRoute);
 	ienv->ReleaseIntArrayElements(coordinates, (jint*)data, 0);
-	vector<RouteSegmentResult> r = searchRouteInternal(&c, false);
+	std::vector<RouteSegmentResult> r = searchRouteInternal(&c, false);
 	UNORDERED(map)<int64_t, int> indexes;
 	for (int t = 0; t< ienv->GetArrayLength(regions); t++) {
 		jobject oreg = ienv->GetObjectArrayElement(regions, t);

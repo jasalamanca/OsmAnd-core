@@ -9,8 +9,6 @@
 #include <SkBitmap.h>
 
 #include <ElapsedTimer.h>
-#include "SkBlurDrawLooper.h"
-#include "Internal.h"
 
 // M_PI is no longer part of math.h/cmath by standart, but some GCC's define them
 #define _USE_MATH_DEFINES
@@ -21,11 +19,6 @@
 #if !defined(M_PI_2)
 	const double M_PI_2 = M_PI / 2.0;
 #endif
-
-// Better don't do this
-using namespace std;
-
-struct RenderingContext;
 
 inline double toRadians(double angdeg) {
 	return angdeg / 180 * M_PI;
@@ -91,7 +84,7 @@ private :
 	// int shadowRenderingMode = 3; solid border (CPU use like classic version or even smaller)
 	int shadowRenderingMode;
 	int shadowRenderingColor;
-	string defaultIconsDir;
+	std::string defaultIconsDir;
 
 public:
 	// debug purpose
@@ -148,7 +141,7 @@ public:
 	virtual std::string const & getTranslatedString(const std::string& src) const;
 	virtual std::string const & getReshapedString(const std::string& src) const;
 
-	void setDefaultIconsDir(string path) {
+	void setDefaultIconsDir(std::string const & path) {
 		defaultIconsDir = path;
 	}
 

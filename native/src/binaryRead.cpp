@@ -306,7 +306,7 @@ bool readRouteTree(CodedInputStream* input, RouteSubregion* thisTree, RouteSubre
 				int oldLimit = input->PushLimit(subregion.length);
 				readRouteTree(input, &subregion, thisTree, ind, depth - 1, true);
 				input->PopLimit(oldLimit);
-				input->Seek(subregion.filePointer + subregion.length);
+				input->Seek(subregion.filePointer + subregion.length);///
 				thisTree->subregions.push_back(subregion);
 			} else {
 				if (!skipUnknownFields(input, tag)) {
@@ -461,7 +461,7 @@ bool initMapStructure(CodedInputStream* input, BinaryMapFile* file) {
 			int oldLimit = input->PushLimit(mapIndex.length);
 			readMapIndex(input, &mapIndex, false);
 			input->PopLimit(oldLimit);
-			input->Seek(mapIndex.filePointer + mapIndex.length);
+			input->Seek(mapIndex.filePointer + mapIndex.length);///
 			file->mapIndexes.push_back(mapIndex);
 			file->indexes.push_back(&file->mapIndexes.back());
 			file->basemap = file->basemap || mapIndex.name.find("basemap") != string::npos;
@@ -474,7 +474,7 @@ bool initMapStructure(CodedInputStream* input, BinaryMapFile* file) {
 			int oldLimit = input->PushLimit(routingIndex->length);
 			readRoutingIndex(input, routingIndex, false);
 			input->PopLimit(oldLimit);
-			input->Seek(routingIndex->filePointer + routingIndex->length);
+			input->Seek(routingIndex->filePointer + routingIndex->length);///
 			file->routingIndexes.push_back(routingIndex);
 			file->indexes.push_back(file->routingIndexes.back());
 			break;
@@ -536,7 +536,6 @@ static const int MASK_TO_READ = ~((1 << SHIFT_COORDINATES) - 1);
 bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types, MapIndex const * root) {
 	RenderingRuleSearchRequest* r = req->req;
 	for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++) {
-//////// duplicate set...???
 		for (int i = 1; i <= 3; i++) {
 			r->setIntFilter(r->props()->R_MINZOOM, req->zoom);
 			r->setStringFilter(r->props()->R_TAG, type->first);
@@ -982,6 +981,7 @@ void convertRouteDataObjecToMapObjects(SearchQuery* q, std::vector<RouteDataObje
 	}
 }
 
+// Needed to read rules when files where initialized fron cache file.
 void checkAndInitRouteRegionRules(int fileInd, RoutingIndex* routingIndex){
 	// init decoding rules
 	if (routingIndex->decodingRules.size() == 0) {
@@ -1004,26 +1004,14 @@ void searchRouteSubregions(SearchQuery const * q, std::vector<RouteSubregion> & 
 		BinaryMapFile * file = i->second;
 		std::vector<RoutingIndex*>::iterator routeIndex = file->routingIndexes.begin();
 		for (; routeIndex != file->routingIndexes.end(); routeIndex++) {
-			bool contains = false;
-			std::vector<RouteSubregion> & subs = basemap? (*routeIndex)->basesubregions : (*routeIndex)->subregions;
-			for (std::vector<RouteSubregion>::const_iterator subreg = subs.begin(); subreg != subs.end(); subreg++) {
-				if (subreg->right >= q->left && q->right >= subreg->left && subreg->bottom >= q->top
-						&& q->bottom >= subreg->top) {
-					contains = true;
-				}
-			}
-			if (contains) {
+			std::vector<RouteSubregion> & subs = (*routeIndex)->subregions;
 				lseek(file->routefd, 0, SEEK_SET);
 				FileInputStream input(file->routefd);
 				input.SetCloseOnDelete(false);
 				CodedInputStream cis(&input);
-				cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
-				cis.Seek((*routeIndex)->filePointer);
-				uint32_t old = cis.PushLimit((*routeIndex)->length);
+				cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 				searchRouteRegion(&cis, q, *routeIndex, subs, tempResult);
-				cis.PopLimit(old);
 				checkAndInitRouteRegionRules(file->routefd, (*routeIndex));
-			}
 		}
 	}
 }
@@ -1036,7 +1024,7 @@ void readRouteMapObjects(SearchQuery* q, BinaryMapFile* file, vector<RouteSubreg
 	FileInputStream input(file->fd);
 	input.SetCloseOnDelete(false);
 	CodedInputStream cis(&input);
-	cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 2);
+	cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 	for (std::vector<RouteSubregion>::iterator sub = found.begin(); sub != found.end(); sub++) {
 		std::vector<RouteDataObject*> list;
 		cis.Seek(sub->filePointer + sub->mapDataBlock);
@@ -1056,31 +1044,17 @@ void readRouteDataAsMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<
 		if (q->publisher->isCancelled()) {
 			break;
 		}
-		bool contains = false;
-
-		///// TODO it looks safe not to copy here
 		std::vector<RouteSubregion> & subs = (*routeIndex)->subregions;
 		if (q->zoom <= zoomForBaseRouteRendering) {
 			subs = (*routeIndex)->basesubregions;
 		}
-		for (std::vector<RouteSubregion>::iterator subreg = subs.begin(); subreg != subs.end(); subreg++) {
-			if (subreg->right >= (uint) q->left && (uint)q->right >= subreg->left && 
-					subreg->bottom >= (uint) q->top && (uint) q->bottom >= subreg->top) {
-				OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "Search route map %s", (*routeIndex)->name.c_str());
-				contains = true;
-			}
-		}
-		if (contains) {
 			vector<RouteSubregion> found;
 			lseek(file->fd, 0, SEEK_SET);
 			FileInputStream input(file->fd);
 			input.SetCloseOnDelete(false);
 			CodedInputStream cis(&input);
-			cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
-			cis.Seek((*routeIndex)->filePointer);
-			uint32_t old = cis.PushLimit((*routeIndex)->length);
+			cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 			searchRouteRegion(&cis, q, *routeIndex, subs, found);
-			cis.PopLimit(old);
 			checkAndInitRouteRegionRules(file->fd, (*routeIndex));
 			readRouteMapObjects(q, file, found, (*routeIndex), tempResult, skipDuplicates, ids, renderedState);
 		}
@@ -1128,7 +1102,7 @@ void readMapObjects(SearchQuery * q, BinaryMapFile* file) {
 					FileInputStream input(file->fd);
 					input.SetCloseOnDelete(false);
 					CodedInputStream cis(&input);
-					cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
+					cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 					searchMapData(&cis, &(*mapLevel), &(*mapIndex), q);
 				}
 			}
@@ -1317,7 +1291,7 @@ void searchRouteRegion(CodedInputStream * input, SearchQuery const * q, RoutingI
 			if(subreg->subregions.empty() && subreg->mapDataBlock == 0){
 				input->Seek(subreg->filePointer);
 				uint32_t old = input->PushLimit(subreg->length);
-				readRouteTree(input, &(*subreg), NULL, ind, -1/*contains? -1 : 1*/, false);
+				readRouteTree(input, &(*subreg), NULL, ind, -1, false);///
 				input->PopLimit(old);
 			}
 			searchRouteRegion(input, q, ind, subreg->subregions, toLoad);
@@ -1465,8 +1439,9 @@ bool readRouteTreeData(CodedInputStream* input, RouteSubregion const * s, std::v
 			int oldLimit = input->PushLimit(length);
 			RouteDataObject* obj = new RouteDataObject;
 			readRouteDataObject(input, s->left, s->top, obj);
-			if((uint32_t)dataObjects.size() <= obj->id ) {
-				dataObjects.resize((uint32_t) obj->id + 1, NULL);
+			///OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "id %d", obj->id);///
+			if(dataObjects.size() <= obj->id ) {
+				dataObjects.resize((uint32_t) obj->id + 1, NULL);///map???
 			}
 			obj->region = routingIndex;
 			dataObjects[obj->id] = obj;
@@ -1581,14 +1556,12 @@ bool readRouteTreeData(CodedInputStream* input, RouteSubregion const * s, std::v
 			if ((uint)(*dobj)->id < idTables.size()) {
 				(*dobj)->id = idTables[(*dobj)->id];
 			}
-			if ((*dobj)->namesIds.size() > 0) {
-				vector<pair<uint32_t, uint32_t> >::const_iterator itnames = (*dobj)->namesIds.begin();
-				for(; itnames != (*dobj)->namesIds.end(); itnames++) {
-					if((*itnames).second >= stringTable.size()) {
-						OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "ERROR VALUE string table %d", (*itnames).second );
-					} else {
-						(*dobj)->names[(int) (*itnames).first] = stringTable[(*itnames).second];
-					}
+			vector<pair<uint32_t, uint32_t> >::const_iterator itnames = (*dobj)->namesIds.begin();
+			for(; itnames != (*dobj)->namesIds.end(); itnames++) {
+				if((*itnames).second >= stringTable.size()) {
+					OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "ERROR VALUE string table %d", (*itnames).second );
+				} else {
+					(*dobj)->names[(int) (*itnames).first] = stringTable[(*itnames).second];
 				}
 			}
 		}
@@ -1608,11 +1581,11 @@ void searchRouteSubRegion(int fileInd, std::vector<RouteDataObject*>& list,
 	CodedInputStream cis(&input);
 	cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
 
-	cis.Seek(sub->filePointer + sub->mapDataBlock);
+	cis.Seek(sub->filePointer + sub->mapDataBlock);/// Only one seek please
 	uint32_t length;
 	cis.ReadVarint32(&length);
 	uint32_t old = cis.PushLimit(length);
-	readRouteTreeData(&cis, &(*sub), list, routingIndex);
+	readRouteTreeData(&cis, sub, list, routingIndex);
 	cis.PopLimit(old);
 }
 
@@ -1683,11 +1656,7 @@ bool hasEnding (std::string const &fullString, std::string const &ending)
 
 BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
-	std::map<std::string, BinaryMapFile*>::iterator iterator;
-	if ((iterator = openFiles.find(inputName)) != openFiles.end()) {
-		delete iterator->second;
-		openFiles.erase(iterator);
-	}
+	closeBinaryMapFile(inputName);
 
 #if defined(_WIN32)
 	int fileDescriptor = open(inputName.c_str(), O_RDONLY | O_BINARY);
@@ -1709,14 +1678,15 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 		struct stat stat;
 		fstat(fileDescriptor, &stat);
 		for (int i = 0; i < cache->fileindex_size(); i++) {
-			FileIndex fi = cache->fileindex(i);
+			FileIndex const & fi = cache->fileindex(i);
 			if (hasEnding(inputName, fi.filename()) && fi.size() == stat.st_size) {
 				fo = cache->mutable_fileindex(i);
 				break;
 			}
 		}
 	}
-	if (fo != NULL) {
+	if (fo != NULL)
+	{  // Previously cached
 		mapFile->version = fo->version();
 		mapFile->dateCreated = fo->datemodified();
 		for (int i = 0; i < fo->mapindex_size(); i++) {

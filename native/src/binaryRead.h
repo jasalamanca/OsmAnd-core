@@ -83,7 +83,7 @@ struct RoutingIndex : BinaryPartIndex {
 	RoutingIndex() : BinaryPartIndex(ROUTING_INDEX) {
 	}
 
-	void initRouteEncodingRule(uint32_t id, std::string tag, std::string val) {
+	void initRouteEncodingRule(uint32_t id, std::string const & tag, std::string const & val) {
 		tag_value pair = tag_value(tag, val);
 		while(decodingRules.size() < id + 1){
 			decodingRules.push_back(pair);
@@ -151,13 +151,13 @@ struct RouteDataObject {
 		return false;
 	}
 
-	double directionRoute(int startPoint, bool plus){
+	double directionRoute(int startPoint, bool plus) const {
 		// look at comment JAVA
 		return directionRoute(startPoint, plus, 5);
 	}
 
 	// Gives route direction of EAST degrees from NORTH ]-PI, PI]
-	double directionRoute(size_t startPoint, bool plus, float dist) {
+	double directionRoute(size_t startPoint, bool plus, float dist) const {
 		int x = pointsX[startPoint];
 		int y = pointsY[startPoint];
 		size_t nx = startPoint;
@@ -264,10 +264,9 @@ struct MapIndex : BinaryPartIndex {
 		}
 	}
 
-	void initMapEncodingRule(uint32_t type, uint32_t id, std::string tag, std::string val) {
+	// TODO type is not used. Can we remove it on obf???
+	void initMapEncodingRule(uint32_t type, uint32_t id, std::string const & tag, std::string const & val) {
 		tag_value pair = tag_value(tag, val);
-		// DEFINE hash
-		//encodingRules[pair] = id;
 		decodingRules[id] = pair;
 
 		if ("name" == tag) {
@@ -293,7 +292,6 @@ struct MapIndex : BinaryPartIndex {
 		}
 	}
 };
-
 
 struct BinaryMapFile {
 	std::string inputName;
@@ -327,7 +325,7 @@ struct ResultPublisher {
 		result.insert(result.begin(), r.begin(), r.end());
 		return true;
 	}
-	bool isCancelled() {
+	bool isCancelled() const {
 		return false;
 	}
 	virtual ~ResultPublisher() {

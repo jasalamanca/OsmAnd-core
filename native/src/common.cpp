@@ -43,7 +43,7 @@ RenderingContext::~RenderingContext()
 		delete (*itTextToDraw);
 }
 
-bool RenderingContext::interrupted()
+bool RenderingContext::interrupted() const
 {
 	return false;
 }
@@ -74,7 +74,7 @@ SkBitmap* RenderingContext::getCachedBitmap(const std::string& bitmapResource) c
 UNORDERED(map)<std::string, SkBitmap*> cachedBitmaps;
 SkBitmap* getCachedBitmap(RenderingContext & rc, const std::string& bitmapResource)
 {
-	if(bitmapResource.size() == 0)
+	if(bitmapResource.empty())
 		return NULL;
 
 	// Try to find previously cached

@@ -136,7 +136,7 @@ public:
 	}
 	virtual ~RenderingContext();
 
-	virtual bool interrupted();
+	virtual bool interrupted() const;
 	virtual SkBitmap* getCachedBitmap(const std::string& bitmapResource) const;
 	virtual std::string const & getTranslatedString(const std::string& src) const;
 	virtual std::string const & getReshapedString(const std::string& src) const;

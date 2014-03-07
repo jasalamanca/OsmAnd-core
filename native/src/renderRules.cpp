@@ -64,7 +64,7 @@ RenderingRule::RenderingRule(Attributes const & attrs, RenderingRulesStorage* st
 		} else if (property->isFloat()) {
 			if (floatProperties.size() == 0) {
 				// lazy creates
-				floatProperties.assign(attrs.size(), - 1);
+				floatProperties.assign(attrs.size(), -1);
 			}
 			floatProperties[i] = property->parseFloatValue(it->second);
 		} else {
@@ -84,13 +84,14 @@ inline int RenderingRule::getPropertyIndex(std::string const & property) const {
 		return -1;
 	}
 
-//// is copy neccesary?
-std::string RenderingRule::getStringPropertyValue(std::string const & property, RenderingRulesStorage const * storage) const {
+std::string const & RenderingRule::getStringPropertyValue(std::string const & property,
+		RenderingRulesStorage const * storage) const {
+	static std::string const empty;
 	int i = getPropertyIndex(property);
 	if (i >= 0) {
 		return storage->getStringValue(intProperties[i]);
 	}
-	return "";
+	return empty;
 }
 
 float RenderingRule::getFloatPropertyValue(std::string const & property) const {
@@ -133,10 +134,9 @@ void RenderingRulesStorage::registerGlobalRule(RenderingRule* rr, int state) {
 	}
 	int value = rr->getIntPropertyValue(this->PROPS.R_VALUE->attrName);
 	if (value == -1) {
-		// attrsMap.toString()
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Attribute tag should be specified for root filter ");
 	}
-	int key = (tag << SHIFT_TAG_VAL) + value;
+	int key = (tag << SHIFT_TAG_VAL) | value;
 	RenderingRule* toInsert = rr;
 	RenderingRule* previous = tagValueGlobalRules[state][key];
 
@@ -194,35 +194,40 @@ struct GroupRules {
 };
 
 class RenderingRulesHandler {
+	private:
 	friend class RenderingRulesStorage;
 	int state;
 	std::stack<GroupRules> st;
-	RenderingRulesStorageResolver* resolver;
+	RenderingRulesStorageResolver const * resolver;
 	RenderingRulesStorage* dependsStorage;
 	RenderingRulesStorage* storage;
 
-
-	RenderingRulesHandler(RenderingRulesStorageResolver* resolver, RenderingRulesStorage* storage) :
+	public:
+	RenderingRulesHandler(RenderingRulesStorageResolver const * resolver,
+			RenderingRulesStorage * storage) :
 			resolver(resolver), dependsStorage(NULL), storage(storage) {
 	}
 
-	RenderingRulesStorage* getDependsStorage() {
+	private:
+	RenderingRulesStorage const * getDependsStorage() const {
 		return dependsStorage;
 	}
 
-	static Attributes& parseAttributes(const char **atts, Attributes& m,
-			RenderingRulesStorage* st) {
+	static Attributes& parseAttributes(const char **atts, Attributes& m) {
+			//RenderingRulesStorage* st) {
 		while (*atts != NULL) {
-			std::string vl = std::string(atts[1]);
-			if(vl.size() > 1 && vl[0] == '$') {
-				vl = st->renderingConstants[vl.substr(1, vl.size() - 1)];
-			}
+			// Not used
+			//std::string vl = std::string(atts[1]);
+			//if(vl.size() > 1 && vl[0] == '$') {
+			//	vl = st->renderingConstants[vl.substr(1, vl.size() - 1)];
+			//}
 			m[std::string(atts[0])] = std::string(atts[1]);
 			atts += 2;
 		}
 		return m;
 	}
 
+	public:
 	static void startElementHandler(void *data, const char *tag, const char **atts) {
 		RenderingRulesHandler* t = (RenderingRulesHandler*) data;
 		string name(tag);
@@ -231,7 +236,7 @@ class RenderingRulesHandler {
 			if (!t->st.empty() && t->st.top().isGroup()) {
 				attrsMap.insert(t->st.top().groupAttributes.begin(), t->st.top().groupAttributes.end());
 			}
-			parseAttributes(atts, attrsMap, t->storage);
+			parseAttributes(atts, attrsMap);
 			RenderingRule* renderingRule = new RenderingRule(attrsMap,t->storage);
 			if (!t->st.empty() && t->st.top().isGroup()) {
 				t->st.top().children.push_back(renderingRule);
@@ -242,14 +247,12 @@ class RenderingRulesHandler {
 				t->storage->registerGlobalRule(renderingRule, t->state);
 
 			}
-			GroupRules gr(renderingRule);
-			t->st.push(gr);
+			t->st.push(GroupRules(renderingRule));
 		} else if ("groupFilter" == name) { //$NON-NLS-1$
 			Attributes attrsMap;
-			parseAttributes(atts, attrsMap, t->storage);
+			parseAttributes(atts, attrsMap);
 			RenderingRule* renderingRule = new RenderingRule(attrsMap,t->storage);
 			if (!t->st.empty() && t->st.top().isGroup()) {
-				GroupRules parent = ((GroupRules) t->st.top());
 				t->st.top().addGroupFilter(renderingRule);
 			} else if (!t->st.empty() && !t->st.top().isGroup()) {
 				t->st.top().singleRule->ifChildren.push_back(renderingRule);
@@ -262,7 +265,7 @@ class RenderingRulesHandler {
 			if (!t->st.empty() && t->st.top().isGroup()) {
 				groupRules.groupAttributes.insert(t->st.top().groupAttributes.begin(), t->st.top().groupAttributes.end());
 			}
-			parseAttributes(atts, groupRules.groupAttributes, t->storage);
+			parseAttributes(atts, groupRules.groupAttributes);
 			t->st.push(groupRules);
 		} else if ("order" == name) { //$NON-NLS-1$
 			t->state = RenderingRulesStorage::ORDER_RULES;
@@ -275,23 +278,23 @@ class RenderingRulesHandler {
 		} else if ("polygon" == name) { //$NON-NLS-1$
 			t->state = RenderingRulesStorage::POLYGON_RULES;
 		} else if ("renderingConstant" == name) { //$NON-NLS-1$
-			Attributes attrsMap;
-			parseAttributes(atts, attrsMap, t->storage);
-			t->storage->renderingConstants[attrsMap["name"]] = attrsMap["value"];
+			//Attributes attrsMap;
+			//parseAttributes(atts, attrsMap);
+			//t->storage->renderingConstants[attrsMap["name"]] = attrsMap["value"];
 		} else if ("renderingAttribute" == name) { //$NON-NLS-1$
 			Attributes attrsMap;
-			parseAttributes(atts, attrsMap, t->storage);
-			std::string attr = attrsMap["name"];
+			parseAttributes(atts, attrsMap);
+			std::string const & attr = attrsMap["name"];
 			Attributes empty;
 			RenderingRule* root = new RenderingRule(empty,t->storage);
 			t->storage->renderingAttributes[attr] = root;
 			t->st.push(GroupRules(root));
 		} else if ("renderingProperty" == name) {
 			Attributes attrsMap;
-			parseAttributes(atts, attrsMap, t->storage);
-			std::string attr = attrsMap["attr"];
+			parseAttributes(atts, attrsMap);
+			std::string const & attr = attrsMap["attr"];
 			RenderingRuleProperty* prop;
-			std::string type = attrsMap["type"];
+			std::string const & type = attrsMap["type"];
 			if ("boolean" == type) {
 				prop = RenderingRuleProperty::createInputBooleanProperty(attr);
 			} else if ("string" == type) {
@@ -299,25 +302,25 @@ class RenderingRulesHandler {
 			} else {
 				prop = RenderingRuleProperty::createInputIntProperty(attr);
 			}
-			prop->description = attrsMap["description"];
-			prop->name = attrsMap["name"];
-			std::string possible = attrsMap["possibleValues"];
-			if (possible != "") {
-				int n;
-				int p = 0;
-				while ((n = possible.find(',', p)) != std::string::npos) {
-					prop->possibleValues.push_back(possible.substr(p, n));
-					p = n + 1;
-				}
-				prop->possibleValues.push_back(possible.substr(p));
-			}
+			//prop->description = attrsMap["description"];
+			//prop->name = attrsMap["name"];
+			//std::string const & possible = attrsMap["possibleValues"];
+			//if (possible != "") {
+			//	int n;
+			//	int p = 0;
+			//	while ((n = possible.find(',', p)) != std::string::npos) {
+			//		prop->possibleValues.push_back(possible.substr(p, n));
+			//		p = n + 1;
+			//	}
+			//	prop->possibleValues.push_back(possible.substr(p));
+			//}
 			t->storage->PROPS.registerRule(prop);
 		} else if ("renderingStyle" == name) {
 			Attributes attrsMap;
-			parseAttributes(atts, attrsMap, t->storage);
-			std::string depends = attrsMap["depends"];
+			parseAttributes(atts, attrsMap);
+			std::string const & depends = attrsMap["depends"];
 			if (depends.size() > 0 && t->resolver != NULL) {
-				t->dependsStorage = t->resolver->resolve(depends, t->resolver);
+				t->dependsStorage = t->resolver->resolve(depends);
 			}
 			if (t->dependsStorage != NULL) {
 				// copy dictionary
@@ -327,7 +330,6 @@ class RenderingRulesHandler {
 			} else if (depends.size() > 0) {
 				OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "!Dependent rendering style was not resolved : %s", depends.c_str());
 			}
-			//renderingName = attrsMap["name"];
 		} else {
 			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "Unknown tag : %s", name.c_str());
 		}
@@ -391,16 +393,16 @@ void RenderingRulesStorage::printDebug(int state) const {
 	}
 }
 
-void RenderingRulesStorage::parseRulesFromXmlInputStream(const char* filename, RenderingRulesStorageResolver* resolver) {
+void RenderingRulesStorage::parseRulesFromXmlInputStream(const char* filename,
+		RenderingRulesStorageResolver const * resolver) {
 	XML_Parser parser = XML_ParserCreate(NULL);
-	RenderingRulesHandler* handler = new RenderingRulesHandler(resolver, this);
-	XML_SetUserData(parser, handler);
+	RenderingRulesHandler handler = RenderingRulesHandler(resolver, this);
+	XML_SetUserData(parser, &handler);
 	XML_SetElementHandler(parser, RenderingRulesHandler::startElementHandler, RenderingRulesHandler::endElementHandler);
 	FILE *file = fopen(filename, "r");
 	if (file == NULL) {
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "File can not be open %s", filename);
 		XML_ParserFree(parser);
-		delete handler;
 		return;
 	}
 	char buffer[512];
@@ -414,20 +416,19 @@ void RenderingRulesStorage::parseRulesFromXmlInputStream(const char* filename, R
 		if (XML_Parse(parser, buffer, len, done) == XML_STATUS_ERROR) {
 			fclose(file);
 			XML_ParserFree(parser);
-			delete handler;
 			return;
 		}
 	}
 
-	RenderingRulesStorage* depends = handler->getDependsStorage();
+	RenderingRulesStorage const * depends = handler.getDependsStorage();
 	if (depends != NULL) {
 		// merge results
 		// dictionary and props are already merged
-		std::map<std::string,  RenderingRule*>::iterator it = depends->renderingAttributes.begin();
+		std::map<std::string, RenderingRule*>::const_iterator it = depends->renderingAttributes.begin();
 		for(;it != depends->renderingAttributes.end(); it++) {
-			std::map<std::string,  RenderingRule*>::iterator o = renderingAttributes.find(it->first);
+			std::map<std::string, RenderingRule*>::iterator o = renderingAttributes.find(it->first);
 			if (o != renderingAttributes.end()) {
-				std::vector<RenderingRule*>::iterator list = it->second->ifElseChildren.begin();
+				std::vector<RenderingRule*>::const_iterator list = it->second->ifElseChildren.begin();
 				for (;list != it->second->ifElseChildren.end(); list++) {
 					o->second->ifElseChildren.push_back(*list);
 				}
@@ -440,7 +441,7 @@ void RenderingRulesStorage::parseRulesFromXmlInputStream(const char* filename, R
 			if (depends->tagValueGlobalRules[i].empty()) {
 				continue;
 			}
-			UNORDERED(map)<int, RenderingRule*>::iterator it = depends->tagValueGlobalRules[i].begin();
+			UNORDERED(map)<int, RenderingRule*>::const_iterator it = depends->tagValueGlobalRules[i].begin();
 			for (; it != depends->tagValueGlobalRules[i].end(); it++) {
 				UNORDERED(map)<int, RenderingRule*>::iterator o = tagValueGlobalRules[i].find(it->first);
 				RenderingRule* toInsert = it->second;
@@ -453,7 +454,6 @@ void RenderingRulesStorage::parseRulesFromXmlInputStream(const char* filename, R
 		}
 	}
 	XML_ParserFree(parser);
-	delete handler;
 	fclose(file);
 }
 
@@ -462,7 +462,7 @@ RenderingRuleSearchRequest::RenderingRuleSearchRequest(RenderingRulesStorage* st
 	PROPS = &(this->storage->PROPS);
 	this->values.resize(PROPS->properties.size(), 0);
 	this->fvalues.resize(PROPS->properties.size(), 0);
-	UNORDERED(map)<std::string, RenderingRuleProperty*>::iterator it = PROPS->properties.begin();
+	UNORDERED(map)<std::string, RenderingRuleProperty*>::const_iterator it = PROPS->properties.begin();
 	for (; it != PROPS->properties.end(); it++) {
 		if (!it->second->isColor()) {
 			values[it->second->id] = -1;
@@ -494,9 +494,10 @@ int RenderingRuleSearchRequest::getIntPropertyValue(RenderingRuleProperty const 
 	return values[prop->id];
 }
 
-std::string RenderingRuleSearchRequest::getStringPropertyValue(RenderingRuleProperty const * prop) const {
+std::string const & RenderingRuleSearchRequest::getStringPropertyValue(RenderingRuleProperty const * prop) const {
+	static std::string const empty;
 	if (prop == NULL) {
-		return std::string();
+		return empty;
 	}
 	int s = values[prop->id];
 	return storage->getDictionaryValue(s);
@@ -509,42 +510,32 @@ float RenderingRuleSearchRequest::getFloatPropertyValue(RenderingRuleProperty co
 	return fvalues[prop->id];
 }
 
-float RenderingRuleSearchRequest::getFloatPropertyValue(RenderingRuleProperty const * prop) const {
-	if (prop == NULL) {
-		return 0;
-	}
-	return fvalues[prop->id];
-}
-
 void RenderingRuleSearchRequest::setStringFilter(RenderingRuleProperty const * p, std::string const & filter) {
 	if (p != NULL) {
-		// assert p->input;
 		values[p->id] = storage->getDictionaryValue(filter);
 	}
 }
 
 void RenderingRuleSearchRequest::setIntFilter(RenderingRuleProperty const * p, int filter) {
 	if (p != NULL) {
-		// assert p->input;
 		values[p->id] = filter;
 	}
 }
 
 void RenderingRuleSearchRequest::setBooleanFilter(RenderingRuleProperty const * p, bool filter) {
 	if (p != NULL) {
-		// assert p->input;
 		values[p->id] = filter ? TRUE_VALUE : FALSE_VALUE;
 	}
 }
 
 void RenderingRuleSearchRequest::clearIntvalue(RenderingRuleProperty const * p) {
 	if (p != NULL) {
-		// assert !p->input;
 		values[p->id] = -1;
 	}
 }
 
-void RenderingRuleSearchRequest::externalInitialize(std::vector<int> const & vs, std::vector<float> const & fvs,
+void RenderingRuleSearchRequest::externalInitialize(
+		std::vector<int> const & vs, std::vector<float> const & fvs,
 		std::vector<int> const & sVs, std::vector<float> const & sFvs) {
 	this->values = vs;
 	this->fvalues = fvs;
@@ -557,35 +548,20 @@ bool RenderingRuleSearchRequest::searchRule(int state) {
 }
 
 bool RenderingRuleSearchRequest::searchRenderingAttribute(std::string const & attribute) {
-	searchResult = false;
-	RenderingRule* rule = storage->getRenderingAttributeRule(attribute);
+	RenderingRule const * rule = storage->getRenderingAttributeRule(attribute);
 	if (rule == NULL) {
 		return false;
 	}
-	searchResult = visitRule(rule, true);
-	return searchResult;
+	return visitRule(rule, true);
 }
 
 bool RenderingRuleSearchRequest::search(int state, bool loadOutput) {
-	searchResult = false;
 	int tagKey = values[PROPS->R_TAG->id];
 	int valueKey = values[PROPS->R_VALUE->id];
-	bool result = searchInternal(state, tagKey, valueKey, loadOutput);
-	if (result) {
-		searchResult = true;
-		return true;
-	}
-	result = searchInternal(state, tagKey, 0, loadOutput);
-	if (result) {
-		searchResult = true;
-		return true;
-	}
-	result = searchInternal(state, 0, 0, loadOutput);
-	if (result) {
-		searchResult = true;
-		return true;
-	}
-	return false;
+	// Short circuit logic
+	return searchInternal(state, tagKey, valueKey, loadOutput)
+			|| searchInternal(state, tagKey, 0, loadOutput)
+			|| searchInternal(state, 0, 0, loadOutput);
 }
 
 bool RenderingRuleSearchRequest::searchInternal(int state, int tagKey, int valueKey, bool loadOutput) {
@@ -604,12 +580,12 @@ bool RenderingRuleSearchRequest::searchInternal(int state, int tagKey, int value
 }
 
 bool RenderingRuleSearchRequest::visitRule(RenderingRule const * rule, bool loadOutput) {
-	std::vector<RenderingRuleProperty*> properties = rule->properties;
+	std::vector<RenderingRuleProperty*> const & properties = rule->properties;
 	int propLen = rule->properties.size();
 	for (int i = 0; i < propLen; i++) {
-		RenderingRuleProperty* rp = properties[i];
+		RenderingRuleProperty const * rp = properties[i];
 		if (rp != NULL && rp->input) {
-			bool match;
+			bool match = false;
 			if (rp->isFloat()) {
 				match = rule->floatProperties[i] == fvalues[rp->id];
 			} else if (rp == PROPS->R_MINZOOM) {
@@ -620,7 +596,7 @@ bool RenderingRuleSearchRequest::visitRule(RenderingRule const * rule, bool load
 				if (obj == NULL) {
 					match = true;
 				} else {
-					std::string val = storage->getDictionaryValue(rule->intProperties[i]);
+					std::string const & val = storage->getDictionaryValue(rule->intProperties[i]);
 					int i = val.find('=');
 					if (i >= 0) {
 						match = obj->containsAdditional(val.substr(0, i), val.substr(i + 1));
@@ -643,9 +619,9 @@ bool RenderingRuleSearchRequest::visitRule(RenderingRule const * rule, bool load
 	}
 	// accept it
 	for (int i = 0; i < propLen; i++) {
-		RenderingRuleProperty* rp = properties[i];
+		RenderingRuleProperty const * rp = properties[i];
 		if (rp != NULL && !rp->input) {
-			searchResult = true;
+			//searchResult = true;
 			if (rp->isFloat()) {
 				fvalues[rp->id] = rule->floatProperties[i];
 				values[rp->id] = rule->intProperties[i];
@@ -656,13 +632,13 @@ bool RenderingRuleSearchRequest::visitRule(RenderingRule const * rule, bool load
 	}
 	size_t j;
 	for (j = 0; j < rule->ifElseChildren.size(); j++) {
-		bool match = visitRule(rule->ifElseChildren.at(j), loadOutput);
+		bool match = visitRule(rule->ifElseChildren[j], loadOutput);
 		if (match) {
 			break;
 		}
 	}
 	for (j = 0; j < rule->ifChildren.size(); j++) {
-		visitRule(rule->ifChildren.at(j), loadOutput);
+		visitRule(rule->ifChildren[j], loadOutput);
 	}
 	return true;
 }
@@ -703,30 +679,5 @@ bool RenderingRuleSearchRequest::isSpecified(RenderingRuleProperty const * p) co
 		} else {
 			return val != -1;
 		}
-	}
-}
-
-void RenderingRuleSearchRequest::printDebugResult() const {
-	if (searchResult) {
-		printf("\n Found : ");
-		UNORDERED(map)<std::string, RenderingRuleProperty*>::const_iterator it = PROPS->properties.begin();
-		for (; it != PROPS->properties.end(); ++it) {
-			RenderingRuleProperty* rp = it->second;
-			if (!rp->input && isSpecified(rp)) {
-				printf(" %s=", rp->attrName.c_str());
-				if (rp->isString()) {
-					printf("\"%s\"", getStringPropertyValue(rp).c_str());
-				} else if (rp->isFloat()) {
-					printf("%f", getFloatPropertyValue(rp));
-				} else if (rp->isColor()) {
-					printf("%s", colorToString(getIntPropertyValue(rp)).c_str());
-				} else if (rp->isIntParse()) {
-					printf("%d", getIntPropertyValue(rp));
-				}
-			}
-		}
-		printf("\n");
-	} else {
-		printf("\nNot found\n");
 	}
 }

@@ -175,7 +175,7 @@ void initRules(JNIEnv* env, RenderingRulesStorage* st, jobject javaStorage) {
 }
 
 RenderingRulesStorage* createRenderingRulesStorage(JNIEnv* env, jobject storage) {
-	RenderingRulesStorage* res = new RenderingRulesStorage(storage, false);
+	RenderingRulesStorage* res = new RenderingRulesStorage(false);
 	initDictionary(env, res, storage);
 	initProperties(env, res, storage);
 	initRules(env, res, storage);
@@ -208,7 +208,7 @@ void initRenderingRuleSearchRequest(JNIEnv* env, RenderingRuleSearchRequest* r, 
 		jintArray ia = (jintArray) env->GetObjectField(rrs, RenderingRuleSearchRequest_values);
 		jint* ie = env->GetIntArrayElements(ia, NULL);
 		for (int i = 0; i < sz; i++) {
-			values[requestProps.at(i)->id] = ie[i];
+			values[requestProps[i]->id] = ie[i];
 		}
 		env->ReleaseIntArrayElements(ia, ie, JNI_ABORT);
 		env->DeleteLocalRef(ia);
@@ -219,7 +219,7 @@ void initRenderingRuleSearchRequest(JNIEnv* env, RenderingRuleSearchRequest* r, 
 		jfloatArray ia = (jfloatArray) env->GetObjectField(rrs, RenderingRuleSearchRequest_fvalues);
 		jfloat* ie = env->GetFloatArrayElements(ia, NULL);
 		for (int i = 0; i < sz; i++) {
-			fvalues[requestProps.at(i)->id] = ie[i];
+			fvalues[requestProps[i]->id] = ie[i];
 		}
 		env->ReleaseFloatArrayElements(ia, ie, JNI_ABORT);
 		env->DeleteLocalRef(ia);
@@ -230,7 +230,7 @@ void initRenderingRuleSearchRequest(JNIEnv* env, RenderingRuleSearchRequest* r, 
 		jintArray ia = (jintArray) env->GetObjectField(rrs, RenderingRuleSearchRequest_values);
 		jint* ie = env->GetIntArrayElements(ia, NULL);
 		for (int i = 0; i < sz; i++) {
-			savedValues[requestProps.at(i)->id] = ie[i];
+			savedValues[requestProps[i]->id] = ie[i];
 		}
 		env->ReleaseIntArrayElements(ia, ie, JNI_ABORT);
 		env->DeleteLocalRef(ia);
@@ -241,7 +241,7 @@ void initRenderingRuleSearchRequest(JNIEnv* env, RenderingRuleSearchRequest* r, 
 		jfloatArray ia = (jfloatArray) env->GetObjectField(rrs, RenderingRuleSearchRequest_fvalues);
 		jfloat* ie = env->GetFloatArrayElements(ia, NULL);
 		for (int i = 0; i < sz; i++) {
-			savedFvalues[requestProps.at(i)->id] = ie[i];
+			savedFvalues[requestProps[i]->id] = ie[i];
 		}
 		env->ReleaseFloatArrayElements(ia, ie, JNI_ABORT);
 		env->DeleteLocalRef(ia);

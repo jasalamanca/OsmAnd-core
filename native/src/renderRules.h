@@ -45,13 +45,13 @@ private:
 
 public:
 	bool input;
-	std::string attrName;
+	std::string const attrName;
 	// order in
 	int id;
 	// use for custom rendering rule properties
-	std::string name;
-	std::string description;
-	std::vector<std::string> possibleValues;
+	//std::string name;
+	//std::string description;
+	//std::vector<std::string> possibleValues;
 
 	RenderingRuleProperty(std::string const & name, int type, bool input, int id = -1) :
 			type(type), input(input), attrName(name), id(id) {
@@ -179,7 +179,8 @@ private:
 	int getPropertyIndex(std::string const & property) const;
 
 public :
-	std::string getStringPropertyValue(std::string const & property, RenderingRulesStorage const * storage) const;
+	std::string const & getStringPropertyValue(std::string const & property,
+			RenderingRulesStorage const * storage) const;
 	float getFloatPropertyValue(std::string const & property) const;
 	std::string getColorPropertyValue(std::string const & property) const;
 	int getIntPropertyValue(std::string const & property) const;
@@ -187,7 +188,7 @@ public :
 
 class RenderingRulesStorageResolver {
 public:
-	virtual RenderingRulesStorage* resolve(std::string name, RenderingRulesStorageResolver* ref) = 0;
+	virtual RenderingRulesStorage* resolve(std::string const & name) const = 0;
 
 	virtual ~RenderingRulesStorageResolver() {}
 };
@@ -286,8 +287,8 @@ public:
 		return ps;
 	}
 
-	void merge(RenderingRulesStorageProperties& props) {
-		std::vector<RenderingRuleProperty*>::iterator t = props.customRules.begin();
+	void merge(RenderingRulesStorageProperties const & props) {
+		std::vector<RenderingRuleProperty*>::const_iterator t = props.customRules.begin();
 		for (; t != props.customRules.end(); t++) {
 			customRules.push_back(*t);
 			properties[(*t)->attrName] = *t;
@@ -406,7 +407,8 @@ public:
 	const static int SIZE_STATES = 7;
 	UNORDERED(map)<int, RenderingRule*>* tagValueGlobalRules;
 	std::map<std::string, RenderingRule*> renderingAttributes;
-	std::map<std::string, std::string> renderingConstants;
+	// Not used
+	//std::map<std::string, std::string> renderingConstants;
 	std::vector<RenderingRule*> childRules;
 public:
 	RenderingRulesStorageProperties PROPS;
@@ -418,10 +420,9 @@ public:
 	const static int POLYGON_RULES = 3;
 	const static int TEXT_RULES = 4;
 	const static int ORDER_RULES = 5;
-	const void* storageId;
 
-	RenderingRulesStorage(const void* storage, bool createDefProperties = true)
-	: PROPS(createDefProperties), storageId(storage) {
+	RenderingRulesStorage(bool createDefProperties = true)
+	: PROPS(createDefProperties){
 		tagValueGlobalRules = new UNORDERED(map)<int, RenderingRule*>[SIZE_STATES];
 		if(createDefProperties) {
 			getDictionaryValue("");
@@ -451,7 +452,7 @@ public:
 		if (i < 0) {
 			return empty;
 		}
-		return dictionary.at(i);
+		return dictionary[i];
 	}
 
 	inline int getDictionaryValue(std::string const & s) {
@@ -462,7 +463,7 @@ public:
 		return it->second;
 	}
 
-	void parseRulesFromXmlInputStream(const char* filename, RenderingRulesStorageResolver* resolver);
+	void parseRulesFromXmlInputStream(const char* filename, RenderingRulesStorageResolver const * resolver);
 
 	RenderingRule* getRenderingAttributeRule(std::string const & attribute) {
 		return renderingAttributes[attribute];
@@ -501,7 +502,6 @@ private :
 	std::vector<float> fvalues;
 	std::vector<int> savedValues;
 	std::vector<float> savedFvalues;
-	bool searchResult;
 	MapDataObject* obj;
 
 	bool searchInternal(int state, int tagKey, int valueKey, bool loadOutput);
@@ -516,7 +516,7 @@ public:
 	int getIntPropertyValue(RenderingRuleProperty const * prop) const;
 	int getIntPropertyValue(RenderingRuleProperty const * prop, int def) const;
 
-	std::string getStringPropertyValue(RenderingRuleProperty const * prop) const;
+	std::string const & getStringPropertyValue(RenderingRuleProperty const * prop) const;
 
 	float getFloatPropertyValue(RenderingRuleProperty const * prop) const;
 	float getFloatPropertyValue(RenderingRuleProperty const * prop, float def) const;
@@ -550,8 +550,6 @@ public:
 
 	void externalInitialize(int* values, float* fvalues,	int* savedValues,	float* savedFvalues);
 
-	void printDebugResult() const;
-
 	void externalInitialize(std::vector<int> const & vs, std::vector<float> const & fvs,
 			std::vector<int> const & sVs, std::vector<float> const & sFvs);
 
@@ -563,13 +561,13 @@ public:
 
 class BasePathRenderingRulesStorageResolver : public RenderingRulesStorageResolver {
 public:
-	std::string path;
+	std::string const path;
 	BasePathRenderingRulesStorageResolver(std::string const & path) : path(path) {	}
-	virtual RenderingRulesStorage* resolve(std::string const & name, RenderingRulesStorageResolver* ref) {
+	virtual RenderingRulesStorage* resolve(std::string const & name) {
 		std::string file = path;
 		file += name;
 		file+=".render.xml";
-		RenderingRulesStorage* st = new RenderingRulesStorage(file.c_str());
+		RenderingRulesStorage* st = new RenderingRulesStorage();
 		st->parseRulesFromXmlInputStream(file.c_str(), this);
 		return st;
 	}

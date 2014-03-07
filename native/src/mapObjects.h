@@ -25,11 +25,11 @@ public:
 	bool area;
 	long long id;
 
-	bool cycle(){
+	bool cycle() const {
 		return points[0] == points[points.size() -1];
 	}
-	bool containsAdditional(std::string key, std::string val) {
-		std::vector<tag_value>::iterator it = additionalTypes.begin();
+	bool containsAdditional(std::string const & key, std::string const & val) const {
+		std::vector<tag_value>::const_iterator it = additionalTypes.begin();
 		while (it != additionalTypes.end()) {
 			if (it->first == key && it->second == val) {
 				return true;
@@ -39,8 +39,8 @@ public:
 		return false;
 	}
 
-	bool contains(std::string key, std::string val) {
-		std::vector<tag_value>::iterator it = types.begin();
+	bool contains(std::string const & key, std::string const & val) const {
+		std::vector<tag_value>::const_iterator it = types.begin();
 		while (it != types.end()) {
 			if (it->first == key) {
 				return it->second == val;
@@ -50,8 +50,8 @@ public:
 		return false;
 	}
 
-	int getSimpleLayer() {
-		std::vector<tag_value>::iterator it = additionalTypes.begin();
+	int getSimpleLayer() const {
+		std::vector<tag_value>::const_iterator it = additionalTypes.begin();
 		bool tunnel = false;
 		bool bridge = false;
 		while (it != additionalTypes.end()) {

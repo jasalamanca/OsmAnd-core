@@ -216,7 +216,7 @@ int updatePaint(RenderingRuleSearchRequest const * req, SkPaint & paint, int ind
 
 void renderText(MapDataObject* obj, RenderingRuleSearchRequest* req, RenderingContext & rc, std::string const & tag,
 		std::string const & value, float xText, float yText, SkPath const * path) {
-	UNORDERED(map)<std::string, std::string>::iterator it, next = obj->objectNames.begin();
+	UNORDERED(map)<std::string, std::string>::const_iterator it, next = obj->objectNames.begin();
 	while (next != obj->objectNames.end()) {
 		it = next++;
 		if (it->second.length() > 0) {
@@ -380,8 +380,8 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 	if (length < 2) {
 		return;
 	}
-	std::string tag = pair.first;
-	std::string value = pair.second;
+	std::string const & tag = pair.first;
+	std::string const & value = pair.second;
 
 	req->setInitialTagValueZoom(tag, value, rc.getZoom(), mObj);
 	req->setIntFilter(req->props()->R_LAYER, layer);
@@ -644,7 +644,7 @@ void drawPoint(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & 
 
 	req->setInitialTagValueZoom(tag, value, rc.getZoom(), mObj);
 	req->searchRule(1);
-	std::string resId = req->getStringPropertyValue(req-> props()-> R_ICON);
+	std::string const & resId = req->getStringPropertyValue(req-> props()-> R_ICON);
 	SkBitmap* bmp = getCachedBitmap(rc, resId);
 	
 	if (bmp == NULL && !renderTxt)
@@ -659,10 +659,8 @@ void drawPoint(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & 
 		px += rc.calcX;
 		py += rc.calcY;
 	}
-	if (length > 1) {
-		px /= length;
-		py /= length;
-	}
+	px /= length;
+	py /= length;
 
 	if (bmp != NULL) {
 		IconDrawInfo ico;
@@ -748,16 +746,16 @@ void drawIconsOverCanvas(RenderingContext & rc, SkCanvas & canvas)
 	}
 }
 
-double polygonArea(MapDataObject* obj, float mult) {
+double polygonArea(MapDataObject const * obj, float mult) {
 	double area = 0.;
-	int j = obj->points.size() - 1;
-	for (uint i = 0; i < obj->points.size(); i++) {
-		int_pair x = obj->points[i] ;
-		int_pair y = obj->points[j];
-		area += (y.first + ((float) x.first) )* (y.second- ((float)x.second));
-		j = i;
+	int i0 = obj->points.size()-1;
+	for (int i1 = 0; i1 < obj->points.size(); i1++) {
+		int_pair const & x0 = obj->points[i0];
+		int_pair const & x1 = obj->points[i1] ;
+		area += (x0.first + x1.first) * (x0.second - x1.second);
+		i0 = i1;
 	}
-	return std::abs(area) * mult * mult * .5;
+	return std::abs(area)/2 * mult * mult;
 }
 
 void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObjectPrimitive>& linesResArray,
@@ -769,29 +767,23 @@ void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObject
 		return;
 	}
 	linesResArray.reserve(linesArray.size());
-	UNORDERED(map)<int64_t, std::pair<int, int> > densityMap;
+	UNORDERED(map)<int64_t, int> densityMap;
+	int dz = rc.getZoom() + densityZ;
+	// From greater to lower order
 	for (int i = linesArray.size() - 1; i >= 0; i--) {
 		bool accept = true;
-		int o = linesArray[i].order;
-		MapDataObject* line = linesArray[i].obj;
+		MapDataObject const * line = linesArray[i].obj;
 		tag_value const & ts = line->types[linesArray[i].typeInd];
 		if (ts.first == "highway") {
 			accept = false;
 			int64_t prev = 0;
 			for (size_t k = 0; k < line->points.size(); k++) {
-				int dz = rc.getZoom() + densityZ;
 				int64_t x = (line->points[k].first) >> (31 - dz);
 				int64_t y = (line->points[k].second) >> (31 - dz);
 				int64_t tl = (x << dz) + y;
 				if (prev != tl) {
 					prev = tl;
-					std::pair<int, int>& p = densityMap[tl];
-					if (p.first < roadsLimit/* && p.second > o */) {
-						accept = true;
-						p.first++;
-						p.second = o;
-						densityMap[tl] = p; // p is a reference, Do the values ​​have not changed before?
-					}
+					accept = (densityMap[tl]++ < roadsLimit) || accept;
 				}
 			}
 		}
@@ -803,18 +795,7 @@ void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObject
 }
 
 bool sortByOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j) {
-	if( i.order == j.order) {
-		if(i.typeInd == j.typeInd) {
-			return i.obj->points.size() < j.obj->points.size() ;
-		}
-		return i.typeInd < j.typeInd;
-	}
 	return (i.order<j.order);
-}
-
-bool sortPolygonsOrder(const MapDataObjectPrimitive& i, const MapDataObjectPrimitive& j) {
-	if( i.order == j.order) return i.typeInd < j.typeInd;
-	return (i.order>j.order);
 }
 
 void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjects,

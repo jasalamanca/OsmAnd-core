@@ -4,13 +4,21 @@ SRCLOC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 NAME=$(basename $SRCLOC)
 OSMAND_ARCHITECTURES_SET=($*)
 
-if [ ! -d "$ANDROID_SDK" ]; then
+if [[ -z "$ANDROID_SDK" ]]; then
 	echo "ANDROID_SDK is not set"
-	exit
+	exit 1
+fi
+if [ ! -d "$ANDROID_SDK" ]; then
+	echo "ANDROID_SDK is set incorrectly"
+	exit 1
+fi
+if [[ -z "$ANDROID_NDK" ]]; then
+	echo "ANDROID_NDK is not set"
+	exit 1
 fi
 if [ ! -d "$ANDROID_NDK" ]; then
-	echo "ANDROID_NDK is not set"
-	exit
+	echo "ANDROID_NDK is set incorrectly"
+	exit 1
 fi
 
 export ANDROID_SDK_ROOT=`echo $ANDROID_SDK | sed 's/\\\\/\//g'`

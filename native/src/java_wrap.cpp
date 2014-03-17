@@ -94,6 +94,7 @@ extern "C" JNIEXPORT void JNICALL Java_net_osmand_NativeLibrary_initRenderingRul
 	getStorage(ienv, storage);
 }
 
+// Only called from renderImage on MapCreator
 RenderingRuleSearchRequest* initSearchRequest(JNIEnv* env, jobject renderingRuleSearchRequest) {
 	jobject storage = env->GetObjectField(renderingRuleSearchRequest, RenderingRuleSearchRequest_storage);
 	RenderingRulesStorage* st = getStorage(env, storage);
@@ -103,7 +104,7 @@ RenderingRuleSearchRequest* initSearchRequest(JNIEnv* env, jobject renderingRule
 	return res;
 }
 
-
+// Only called from renderImage on MapCreator
 extern "C" JNIEXPORT jlong JNICALL Java_net_osmand_NativeLibrary_searchNativeObjectsForRendering(JNIEnv* ienv,
 		jobject obj, jint sleft, jint sright, jint stop, jint sbottom, jint zoom,
 		jobject renderingRuleSearchRequest, bool skipDuplicates, int renderRouteDataFile,
@@ -138,6 +139,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_net_osmand_NativeLibrary_searchNativeObj
 
 //////////////////////////////////////////
 ///////////// JNI RENDERING //////////////
+// Only called from renderImage on MapCreator
 void fillRenderingAttributes(JNIRenderingContext& rc, RenderingRuleSearchRequest* req) {
 	req->clearState();
 	req->setIntFilter(req->props()->R_MINZOOM, rc.getZoom());
@@ -282,6 +284,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_plus_render_NativeOsmandLib
 #endif
 
 
+// Only called from renderImage on MapCreator
 extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_generateRenderingIndirect( JNIEnv* ienv,
 		jobject obj, jobject renderingContext, jlong searchResult, jboolean isTransparent,
 		jobject renderingRuleSearchRequest, jboolean encodePNG) {

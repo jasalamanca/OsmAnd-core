@@ -214,6 +214,7 @@ int updatePaint(RenderingRuleSearchRequest const * req, SkPaint & paint, int ind
     return 1;
 }
 
+// Only called from renderImage on MapCreator
 void renderText(MapDataObject* obj, RenderingRuleSearchRequest* req, RenderingContext & rc, std::string const & tag,
 		std::string const & value, float xText, float yText, SkPath const * path) {
 	UNORDERED(map)<std::string, std::string>::const_iterator it, next = obj->objectNames.begin();
@@ -374,6 +375,7 @@ void drawOneWayPaints(RenderingContext & rc, SkCanvas & cv, SkPath const & p, in
 	}
 }
 
+// Only called from renderImage on MapCreator
 void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & cv, SkPaint & paint,
 	RenderingContext & rc, tag_value const & pair, int layer, int drawOnlyShadow) {
 	size_t length = mObj->points.size();
@@ -675,6 +677,7 @@ void drawPoint(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & 
 	}
 }
 
+// Only called from renderImage on MapCreator
 void drawObject(RenderingContext & rc, SkCanvas & cv, RenderingRuleSearchRequest* req,
 	SkPaint & paint, std::vector<MapDataObjectPrimitive>& array, int objOrder) {
 
@@ -758,6 +761,7 @@ double polygonArea(MapDataObject const * obj, float mult) {
 	return std::abs(area)/2 * mult * mult;
 }
 
+// Only called from renderImage on MapCreator
 void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObjectPrimitive>& linesResArray,
 		std::vector<MapDataObjectPrimitive> const & linesArray) {
 	int roadsLimit = rc.roadsDensityLimitPerTile;
@@ -794,10 +798,12 @@ void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObject
 	reverse(linesResArray.begin(), linesResArray.end());
 }
 
+// Only called from renderImage on MapCreator
 bool sortByOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j) {
 	return (i.order<j.order);
 }
 
+// Only called from renderImage on MapCreator
 void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjects,
 	RenderingRuleSearchRequest* req, RenderingContext & rc,
 		std::vector<MapDataObjectPrimitive>& polygonsArray, std::vector<MapDataObjectPrimitive>& pointsArray,
@@ -806,7 +812,7 @@ void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjec
 		std::vector<MapDataObjectPrimitive> linesArray;
 		req->clearState();
 		const int size = mapDataObjects.size();
-		float mult = 1. / getPowZoom(max(31 - (rc.getZoom() + 8), 0));
+		float mult = 1. / getPowZoom(std::max(31 - (rc.getZoom() + 8), 0));
 		int i = 0;
 		for (; i < size; i++) {
 			MapDataObject* mobj = mapDataObjects[i];
@@ -857,6 +863,7 @@ void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjec
 	}
 }
 
+// Only called from renderImage on MapCreator
 void doRendering(std::vector <MapDataObject* > const & mapDataObjects, SkCanvas & canvas,
 		RenderingRuleSearchRequest* req,
 		RenderingContext & rc) {

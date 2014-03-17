@@ -342,7 +342,6 @@ struct SearchQuery {
 	int zoom;
 	ResultPublisher* publisher;
 
-	coordinates cacheCoordinates;
 	bool ocean;
 	bool mixed;
 

@@ -48,6 +48,7 @@ public:
 	std::string const attrName;
 	// order in
 	int id;
+	// Not used
 	// use for custom rendering rule properties
 	//std::string name;
 	//std::string description;

@@ -67,8 +67,7 @@ bool skipUnknownFields(CodedInputStream* input, int tag) {
 	return true;
 }
 
-bool readMapTreeBounds(CodedInputStream* input, MapTreeBounds* tree, MapRoot* root) {
-	int init = 0;
+bool readMapTreeBounds(CodedInputStream* input, MapTreeBounds* tree, MapRoot const * root) {
 	int tag;
 	int32_t si;
 	while ((tag = input->ReadTag()) != 0) {
@@ -106,9 +105,6 @@ bool readMapTreeBounds(CodedInputStream* input, MapTreeBounds* tree, MapRoot* ro
 			}
 			break;
 		}
-		}
-		if (init == 0xf) {
-			return true;
 		}
 	}
 	return true;
@@ -353,6 +349,7 @@ bool readRoutingIndex(CodedInputStream* input, RoutingIndex* routingIndex, bool 
 				input->Seek(routingIndex->filePointer + routingIndex->length);
 				break;
 			}
+
 			bool basemap = WireFormatLite::GetTagFieldNumber(tag) == OsmAndRoutingIndex::kBasemapBoxesFieldNumber;
 			RouteSubregion subregion(routingIndex);
 			readInt(input, &subregion.length);
@@ -495,7 +492,7 @@ bool initMapStructure(CodedInputStream* input, BinaryMapFile* file) {
 		}
 	}
 	if (file->version != versionConfirm) {
-		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Corrupted file. It should be ended as it starts with version");
+		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Corrupted file. It should be ended as it starts with version %d %d", file->version, versionConfirm);
 		return false;
 	}
 	if (file->version != MAP_VERSION) {
@@ -533,6 +530,7 @@ static const int SHIFT_COORDINATES = 5;
 static const int ROUTE_SHIFT_COORDINATES = 4;
 static const int MASK_TO_READ = ~((1 << SHIFT_COORDINATES) - 1);
 
+// Only called from renderImage on MapCreator
 bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types, MapIndex const * root) {
 	RenderingRuleSearchRequest* r = req->req;
 	for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++) {
@@ -555,14 +553,18 @@ bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types, MapInde
 	return false;
 }
 
+// Only called from renderImage on MapCreator
 MapDataObject* readMapDataObject(CodedInputStream* input, MapTreeBounds const * tree, SearchQuery* req,
-			MapIndex const * root, uint64_t baseId) {
+			MapIndex const * root) {
 	uint32_t tag = WireFormatLite::GetTagFieldNumber(input->ReadTag());
 	bool area = (uint32_t)MapData::kAreaCoordinatesFieldNumber == tag;
 	if(!area && (uint32_t)MapData::kCoordinatesFieldNumber != tag) {
 		return NULL;
 	}
-	req->cacheCoordinates.clear();
+
+	MapDataObject* dataObject = new MapDataObject();
+	dataObject->area = area;
+	coordinates & coor = dataObject->points;
 	uint32_t size;
 	input->ReadVarint32(&size);
 	int old = input->PushLimit(size);
@@ -586,7 +588,7 @@ MapDataObject* readMapDataObject(CodedInputStream* input, MapTreeBounds const * 
 		}
 		x = (x << SHIFT_COORDINATES) + px;
 		y = (y << SHIFT_COORDINATES) + py;
-		req->cacheCoordinates.push_back(std::pair<int, int>(x, y));
+		coor.push_back(std::pair<int, int>(x, y));
 		px = x;
 		py = y;
 		if (!contains && req->left <= x && req->right >= x && req->top <= y && req->bottom >= y) {
@@ -610,10 +612,11 @@ MapDataObject* readMapDataObject(CodedInputStream* input, MapTreeBounds const * 
 	}
 
 	// READ types
-	std::vector< coordinates > innercoordinates;
-	std::vector< tag_value > additionalTypes;
-	std::vector< tag_value > types;
-	UNORDERED(map)< std::string, unsigned int> stringIds;
+	std::vector< coordinates > & innercoordinates = dataObject->polygonInnerCoordinates;
+	std::vector< tag_value > & additionalTypes = dataObject->additionalTypes;
+	std::vector< tag_value > & types = dataObject->types;
+	UNORDERED(map)< std::string, unsigned int> & stringIds = dataObject->stringIds;
+	int64_t id = 0;
 	bool loop = true;
 	while (loop) {
 		uint32_t t = input->ReadTag();
@@ -675,6 +678,7 @@ MapDataObject* readMapDataObject(CodedInputStream* input, MapTreeBounds const * 
 		}
 		case MapData::kIdFieldNumber:
 			WireFormatLite::ReadPrimitive<int64_t, WireFormatLite::TYPE_SINT64>(input, &id);
+			dataObject->id = id;
 			break;
 		case MapData::kStringNamesFieldNumber:
 			input->ReadVarint32(&size);
@@ -709,18 +713,10 @@ MapDataObject* readMapDataObject(CodedInputStream* input, MapTreeBounds const * 
 
 	req->numberOfAcceptedObjects++;
 
-	MapDataObject* dataObject = new MapDataObject();
-	dataObject->points = req->cacheCoordinates;
-	dataObject->additionalTypes = additionalTypes;
-	dataObject->types = types;
-	dataObject->id = id;
-	dataObject->area = area;
-	dataObject->stringIds = stringIds;
-	dataObject->polygonInnerCoordinates = innercoordinates;
-
 	return dataObject;
 }
 
+// Only called from renderImage on MapCreator
 bool searchMapTreeBounds(CodedInputStream* input, MapTreeBounds* current, MapTreeBounds const * parent,
 		SearchQuery * req, std::vector<MapTreeBounds>* foundSubtrees) {
 	int init = 0;
@@ -810,6 +806,7 @@ bool searchMapTreeBounds(CodedInputStream* input, MapTreeBounds* current, MapTre
 	return true;
 }
 
+// Only called from renderImage on MapCreator
 bool readMapDataBlocks(CodedInputStream* input, SearchQuery * req, MapTreeBounds const * tree, MapIndex const * root) {
 	uint64_t baseId = 0;
 	int tag;
@@ -849,7 +846,7 @@ bool readMapDataBlocks(CodedInputStream* input, SearchQuery * req, MapTreeBounds
 			uint32_t length;
 			DO_((WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &length)));
 			int oldLimit = input->PushLimit(length);
-			MapDataObject* mapObject = readMapDataObject(input, tree, req, root, baseId);
+			MapDataObject* mapObject = readMapDataObject(input, tree, req, root);
 			if (mapObject != NULL) {
 				mapObject->id += baseId;
 				req->publish(mapObject);
@@ -896,6 +893,7 @@ bool checkObjectBounds(SearchQuery* q, MapDataObject* o) {
 
 bool sortTreeBounds (const MapTreeBounds& i,const MapTreeBounds& j) { return (i.mapDataBlock<j.mapDataBlock); }
 
+// Only called from renderImage on MapCreator
 void searchMapData(CodedInputStream* input, MapRoot* root, MapIndex const * ind, SearchQuery * req) {
 	// search
 	for (std::vector<MapTreeBounds>::iterator i = root->bounds.begin();
@@ -1025,7 +1023,7 @@ void readRouteMapObjects(SearchQuery* q, BinaryMapFile* file, vector<RouteSubreg
 	input.SetCloseOnDelete(false);
 	CodedInputStream cis(&input);
 	cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
-	for (std::vector<RouteSubregion>::iterator sub = found.begin(); sub != found.end(); sub++) {
+	for (std::vector<RouteSubregion>::const_iterator sub = found.begin(); sub != found.end(); sub++) {
 		std::vector<RouteDataObject*> list;
 		cis.Seek(sub->filePointer + sub->mapDataBlock);
 		uint32_t length;
@@ -1037,6 +1035,7 @@ void readRouteMapObjects(SearchQuery* q, BinaryMapFile* file, vector<RouteSubreg
 	}
 }
 
+// Only called from renderImage on MapCreator
 void readRouteDataAsMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<MapDataObject*>& tempResult,
 		bool skipDuplicates, IDS_SET& ids, int& renderedState) {
 	std::vector<RoutingIndex*>::iterator routeIndex = file->routingIndexes.begin();
@@ -1061,6 +1060,7 @@ void readRouteDataAsMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<
 	}
 }
 
+// Only called from renderImage on MapCreator
 void readMapObjects(SearchQuery * q, BinaryMapFile* file) {
 	for (std::vector<MapIndex>::iterator mapIndex = file->mapIndexes.begin(); mapIndex != file->mapIndexes.end();
 			mapIndex++) {
@@ -1110,6 +1110,7 @@ void readMapObjects(SearchQuery * q, BinaryMapFile* file) {
 	}
 }
 
+// Only called from renderImage on MapCreator
 void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & basemapResult, std::vector<MapDataObject*>& tempResult,
 		std::vector<MapDataObject*>& coastLines, std::vector<MapDataObject*>& basemapCoastLines,
 		int& count, bool& basemapExists, int& renderRouteDataFile, bool skipDuplicates, int& renderedState) {
@@ -1177,6 +1178,7 @@ void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & b
 	}
 }
 
+// Only called from renderImage on MapCreator
 ResultPublisher* searchObjectsForRendering(SearchQuery * q, bool skipDuplicates, int renderRouteDataFile,
 		std::string const & msgNothingFound, int& renderedState) {
 	int count = 0;
@@ -1426,6 +1428,8 @@ const static int RESTRICTION_SHIFT = 3;
 const static int RESTRICTION_MASK = 7;
 bool readRouteTreeData(CodedInputStream* input, RouteSubregion const * s, std::vector<RouteDataObject*>& dataObjects,
 		RoutingIndex* routingIndex) {
+	// Reduce reallocations and moves
+	dataObjects.reserve(50);
 	int tag;
 	std::vector<int64_t> idTables;
 	UNORDERED(map)<int64_t, std::vector<uint64_t> > restrictions;
@@ -1439,9 +1443,9 @@ bool readRouteTreeData(CodedInputStream* input, RouteSubregion const * s, std::v
 			int oldLimit = input->PushLimit(length);
 			RouteDataObject* obj = new RouteDataObject;
 			readRouteDataObject(input, s->left, s->top, obj);
-			///OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "id %d", obj->id);///
 			if(dataObjects.size() <= obj->id ) {
-				dataObjects.resize((uint32_t) obj->id + 1, NULL);///map???
+				dataObjects.resize((uint32_t) obj->id + 1, NULL);//normally dataobject come ordered resize???
+				//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "id %d cap %d", obj->id, dataObjects.capacity());
 			}
 			obj->region = routingIndex;
 			dataObjects[obj->id] = obj;
@@ -1691,12 +1695,12 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 		mapFile->dateCreated = fo->datemodified();
 		for (int i = 0; i < fo->mapindex_size(); i++) {
 			MapIndex mi;
-			MapPart mp = fo->mapindex(i);
+			MapPart const & mp = fo->mapindex(i);
 			mi.filePointer = mp.offset();
 			mi.length = mp.size();
 			mi.name = mp.name();
 			for (int j = 0; j < mp.levels_size(); j++) {
-				MapLevel ml = mp.levels(j);
+				MapLevel const & ml = mp.levels(j);
 				MapRoot mr;
 				mr.bottom = ml.bottom();
 				mr.left = ml.left();
@@ -1715,12 +1719,12 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 
 		for (int i = 0; i < fo->routingindex_size(); i++) {
 			RoutingIndex *mi = new RoutingIndex();
-			RoutingPart mp = fo->routingindex(i);
+			RoutingPart const & mp = fo->routingindex(i);
 			mi->filePointer = mp.offset();
 			mi->length = mp.size();
 			mi->name = mp.name();
 			for (int j = 0; j < mp.subregions_size(); j++) {
-				RoutingSubregion ml = mp.subregions(j);
+				RoutingSubregion const & ml = mp.subregions(j);
 				RouteSubregion mr(mi);
 				mr.bottom = ml.bottom();
 				mr.left = ml.left();

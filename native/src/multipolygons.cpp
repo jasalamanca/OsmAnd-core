@@ -7,6 +7,7 @@
 #include "Logging.h"
 #include "multipolygons.h"
 
+// Only called from renderImage on MapCreator
 // returns true if coastlines were added!
 bool processCoastlines(std::vector<MapDataObject*>&  coastLines, int leftX, int rightX, int bottomY, int topY, int zoom,
 		bool showIfThereIncompleted, bool addDebugIncompleted, std::vector<MapDataObject*>& res) {
@@ -143,6 +144,7 @@ int ray_intersect_x(int prevX, int prevY, int x, int y, int middleY) {
 	}
 }
 
+// Only called from renderImage on MapCreator
 // Copied from MapAlgorithms
 bool isClockwiseWay(std::vector<int_pair>& c) {
 	if (c.size() == 0) {
@@ -206,6 +208,7 @@ bool isClockwiseWay(std::vector<int_pair>& c) {
 
 
 
+// Only called from renderImage on MapCreator
 void combineMultipolygonLine(std::vector<coordinates>& completedRings, std::vector<coordinates>& incompletedRings,
 			coordinates& coordinates) {
 	if (coordinates.size() > 0) {
@@ -256,6 +259,7 @@ int safelyAddDelta(int number, int delta) {
 	return res;
 }
 
+// Only called from renderImage on MapCreator
 void unifyIncompletedRings(std::vector<std::vector<int_pair> >& toProccess, std::vector<std::vector<int_pair> >& completedRings,
 		int leftX, int rightX, int bottomY, int topY, long dbId, int zoom) {
 	std::set<int> nonvisitedRings;
@@ -397,7 +401,7 @@ void unifyIncompletedRings(std::vector<std::vector<int_pair> >& toProccess, std:
 }
 
 
-
+// Only called from renderImage on MapCreator
 	/**
  * @return -1 if there is no instersection or x<<32 | y
  */
@@ -483,6 +487,7 @@ bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, 
 	return false;
 }
 
+// Only called from renderImage on MapCreator
 bool calculateLineCoordinates(bool inside, int x, int y, bool pinside, int px, int py, int leftX, int rightX,
 		int bottomY, int topY, std::vector<int_pair>& coordinates) {
 	bool lineEnded = false;

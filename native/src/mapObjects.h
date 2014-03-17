@@ -25,6 +25,7 @@ public:
 	bool area;
 	long long id;
 
+	// Only called from renderImage on MapCreator
 	bool cycle() const {
 		return points[0] == points[points.size() -1];
 	}
@@ -50,6 +51,7 @@ public:
 		return false;
 	}
 
+	// Only called from renderImage on MapCreator
 	int getSimpleLayer() const {
 		std::vector<tag_value>::const_iterator it = additionalTypes.begin();
 		bool tunnel = false;

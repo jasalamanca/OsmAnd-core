@@ -16,19 +16,14 @@ if [ ! -f "$SRCLOC/upstream.pack" ]; then
 	curl -L http://download.osmand.net/prebuilt/zlib-1.2.8.tar.bz2 > "$SRCLOC/upstream.pack" || { echo "Failure" 1>&2; exit; }
 fi
 
-# Download
-echo "Zlib Downloading new upstream..."
-curl -L http://sourceforge.net/projects/libpng/files/zlib/1.2.7/zlib-1.2.7.tar.bz2/download > $SRCLOC/upstream.tar.bz2 || { echo "Failed to download!" 1>&2; exit; }
-
 # Extract upstream if needed
-if [ ! -d "$SRCLOC/upstream.original" ]; then
+if [ ! -d "$SRCLOC/upstream.patched" ]; then
 	echo "Extracting '$NAME' upstream..."
-	mkdir -p $SRCLOC/upstream.original
-	tar -xf "$SRCLOC/upstream.pack" -C "$SRCLOC/upstream.original" --strip 1
+	mkdir -p $SRCLOC/upstream.patched
+	tar -xf "$SRCLOC/upstream.pack" -C "$SRCLOC/upstream.patched" --strip 1
 fi
 
 # Patch
-cp -rf "$SRCLOC/upstream.original" "$SRCLOC/upstream.patched"
 if [ -d "$SRCLOC/patches" ]; then
 	echo "Patching '$NAME'..."
 	PATCHES=`ls -1 $SRCLOC/patches/*.patch | sort`

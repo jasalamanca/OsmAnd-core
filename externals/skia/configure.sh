@@ -3,22 +3,6 @@
 SRCLOC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 NAME=$(basename $(dirname "${BASH_SOURCE[0]}") )
 
-# Check if needs reconfiguring
-if [ -f "$SRCLOC/stamp" ]; then
-	last_stamp=""
-	if [ -f "$SRCLOC/.stamp" ]; then
-		last_stamp=`cat "$SRCLOC/.stamp"`
-	fi
-	current_stamp=`cat "$SRCLOC/stamp"`
-	echo "Last stamp:    "$last_stamp
-	echo "Current stamp: "$current_stamp
-	if [ "$last_stamp" != "$current_stamp" ]; then
-		echo "Stamps differ, will clean external '$NAME'..."
-		"$SRCLOC/../clean.sh" $NAME
-		cp "$SRCLOC/stamp" "$SRCLOC/.stamp"
-	fi
-fi
-
 # Check if already configured
 if [ -d "$SRCLOC/upstream.patched" ]; then
 	echo "Skipping external '$NAME': already configured"
@@ -27,10 +11,10 @@ fi
 
 # Extract upstream if needed
 VERSION="chromium-31.0.1626.2"
-if [ ! -d "$SRCLOC/upstream.original" ]; then
+if [ ! -d "$SRCLOC/upstream.patched" ]; then
 	echo "Downloading '$NAME' upstream..."
-	mkdir -p "$SRCLOC/upstream.original"
-	(cd "$SRCLOC/upstream.original" && \
+	mkdir -p "$SRCLOC/upstream.patched"
+	(cd "$SRCLOC/upstream.patched" && \
 		git init && \
 		git remote add origin -t $VERSION https://github.com/osmandapp/OsmAnd-external-skia.git && \
 		git fetch --depth=1 && \
@@ -38,7 +22,6 @@ if [ ! -d "$SRCLOC/upstream.original" ]; then
 fi
 
 # Patch
-cp -rf "$SRCLOC/upstream.original" "$SRCLOC/upstream.patched"
 if [ -d "$SRCLOC/patches" ]; then
 	echo "Patching '$NAME'..."
 	PATCHES=`ls -1 $SRCLOC/patches/*.patch | sort`

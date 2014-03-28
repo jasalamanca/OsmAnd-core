@@ -4,278 +4,231 @@ include("../../common.cmake")
 
 set(ROOT "${OSMAND_ROOT}/externals/skia")
 set(UPSTREAM "${ROOT}/upstream.patched")
-include_directories(AFTER SYSTEM
-	"${UPSTREAM}/src/core"
-	"${UPSTREAM}/include/core"
-	"${UPSTREAM}/src/config"
-	"${UPSTREAM}/include/config"
-	"${UPSTREAM}/src/effects"
-	"${UPSTREAM}/include/effects"
-	"${UPSTREAM}/src/image"
-	"${UPSTREAM}/src/images"
-	"${UPSTREAM}/include/images"
-	"${UPSTREAM}/include/pipe"
-	"${UPSTREAM}/src/ports"
-	"${UPSTREAM}/include/ports"
-	"${UPSTREAM}/src/utils"
-	"${UPSTREAM}/include/utils"
-	"${UPSTREAM}/src/xml"
-	"${UPSTREAM}/include/xml"
-	"${UPSTREAM}/src/sfnt"
-	"${UPSTREAM}/src/gpu"
-	"${UPSTREAM}/include/gpu"
-	"${OSMAND_ROOT}/externals/expat/upstream.patched/lib"
-	"${OSMAND_ROOT}/externals/freetype/upstream.patched/include"
-	"${OSMAND_ROOT}/externals/giflib/upstream.patched/lib"
-	"${OSMAND_ROOT}/externals/jpeg/upstream.patched"
-	"${OSMAND_ROOT}/externals/libpng/upstream.patched"
-)
-add_definitions(-DSK_RELEASE -DGR_RELEASE=1 -DNDEBUG -DSK_SUPPORT_GPU=0)
-set(target_specific_sources
-	"${UPSTREAM}/src/opts/SkBlitRow_opts_none.cpp"
-	"${UPSTREAM}/src/opts/SkBitmapProcState_opts_none.cpp"
-	"${UPSTREAM}/src/opts/SkUtils_opts_none.cpp"
-	"${UPSTREAM}/src/ports/SkGlobalInitialization_default.cpp"
-	"${UPSTREAM}/src/ports/SkOSFile_stdio.cpp"
-	"${UPSTREAM}/src/ports/SkMemory_malloc.cpp"
-	"${UPSTREAM}/src/ports/SkFontHost_sandbox_none.cpp"
-)
+
+set(target_specific_sources "")
+#set(target_specific_dependencies "")
+set(target_specific_libraries_public "")
+set(target_specific_include_dirs_private "")
+set(target_specific_include_dirs_public "")
+set(target_specific_definitions_private "")
+set(target_specific_definitions_public "")
+
+set(used_arch_specific_sources FALSE)
+if(CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "x86" OR (CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "fat" AND CMAKE_TARGET_OS STREQUAL "ios"))
+	set(used_arch_specific_sources TRUE)
+	set(target_specific_sources "${target_specific_sources}"
+		"${UPSTREAM}/src/opts/opts_check_SSE2.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapFilter_opts_SSE2.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapProcState_opts_SSE2.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapProcState_opts_SSSE3.cpp"
+		"${UPSTREAM}/src/opts/SkBlitRect_opts_SSE2.cpp"
+		"${UPSTREAM}/src/opts/SkBlitRow_opts_SSE2.cpp"
+		"${UPSTREAM}/src/opts/SkUtils_opts_SSE2.cpp"
+	)
+	if(CMAKE_COMPILER_FAMILY STREQUAL "gcc")
+		set_source_files_properties(
+			"${UPSTREAM}/src/opts/SkBitmapFilter_opts_SSE2.cpp"
+			"${UPSTREAM}/src/opts/SkBitmapProcState_opts_SSE2.cpp"
+			"${UPSTREAM}/src/opts/SkBlitRect_opts_SSE2.cpp"
+			"${UPSTREAM}/src/opts/SkBlitRow_opts_SSE2.cpp"
+			"${UPSTREAM}/src/opts/SkUtils_opts_SSE2.cpp"
+			PROPERTIES
+				COMPILE_FLAGS "-msse2")
+		set_source_files_properties(
+			"${UPSTREAM}/src/opts/SkBitmapProcState_opts_SSSE3.cpp"
+			PROPERTIES
+				COMPILE_FLAGS "-mssse3")
+	endif()
+endif()
+if(CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "arm" OR (CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "fat" AND CMAKE_TARGET_OS STREQUAL "ios"))
+	set(used_arch_specific_sources TRUE)
+	if(NOT CMAKE_TARGET_OS STREQUAL "ios")
+		set(target_specific_definitions_public ${target_specific_definitions_public}
+			-D__ARM_HAVE_OPTIONAL_NEON_SUPPORT
+		)
+	endif()
+	enable_language(ASM)
+	set(target_specific_sources "${target_specific_sources}"
+		"${UPSTREAM}/src/opts/opts_check_arm.cpp"
+		"${UPSTREAM}/src/opts/SkBlitRow_opts_arm.cpp"
+		"${UPSTREAM}/src/opts/SkBlitRow_opts_arm_neon.cpp"
+		"${UPSTREAM}/src/opts/SkBlitMask_opts_arm.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapProcState_opts_arm.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapProcState_matrixProcs_neon.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapProcState_arm_neon.cpp"
+		"${UPSTREAM}/src/opts/memset32_neon.S"
+		"${UPSTREAM}/src/opts/memset16_neon.S"
+		"${UPSTREAM}/src/opts/memset.arm.S"
+	)
+	if(CMAKE_TARGET_OS STREQUAL "ios" AND CMAKE_COMPILER_FAMILY STREQUAL "clang")
+		set_source_files_properties(
+			"${UPSTREAM}/src/opts/memset32_neon.S"
+			"${UPSTREAM}/src/opts/memset16_neon.S"
+			"${UPSTREAM}/src/opts/memset.arm.S"
+			PROPERTIES
+				COMPILE_FLAGS "-no-integrated-as")
+	endif()
+endif()
+if(NOT used_arch_specific_sources)
+	set(target_specific_sources "${target_specific_sources}"
+		"${UPSTREAM}/src/opts/SkBlitRow_opts_none.cpp"
+		"${UPSTREAM}/src/opts/SkBlitMask_opts_none.cpp"
+		"${UPSTREAM}/src/opts/SkBitmapProcState_opts_none.cpp"
+		"${UPSTREAM}/src/opts/SkUtils_opts_none.cpp"
+	)
+endif()
 
 if(CMAKE_TARGET_OS STREQUAL "windows")
-	include_directories(AFTER SYSTEM
-		"${OSMAND_ROOT}/externals/giflib/include"
+	set(target_specific_include_dirs_private ${target_specific_include_dirs_private}
+		"${UPSTREAM}/src/utils/win"
 	)
+	set(target_specific_include_dirs_public ${target_specific_include_dirs_public}
+		"${UPSTREAM}/include/utils/win"
+	)
+	file(GLOB src_utils_win "${UPSTREAM}/src/utils/win/*")
+#	file(GLOB src_gpu_gl_win "${UPSTREAM}/src/gpu/gl/win/*")
 	set(target_specific_sources "${target_specific_sources}"
-		"${UPSTREAM}/src/ports/SkFontHost_tables.cpp"
 		"${UPSTREAM}/src/ports/SkDebug_win.cpp"
-		"${UPSTREAM}/src/ports/SkFontHost_win.cpp"
+		"${UPSTREAM}/src/ports/SkFontHost_win_dw.cpp"
+		"${UPSTREAM}/src/ports/SkFontMgr_default_dw.cpp"
 		"${UPSTREAM}/src/ports/SkTime_win.cpp"
 		"${UPSTREAM}/src/ports/SkThread_win.cpp"
+		"${UPSTREAM}/src/ports/SkOSFile_win.cpp"
+		"${UPSTREAM}/src/ports/SkTLS_win.cpp"
+		${src_utils_win}
+#		${src_gpu_gl_win}
 	)
-	add_definitions(-DSK_BUILD_FOR_WIN32)
+	set(target_specific_definitions_public ${target_specific_definitions_public}
+		-DSK_BUILD_FOR_WIN32
+		-DSK_FONTHOST_USES_FONTMGR
+	)
+	set(target_specific_libraries_public ${target_specific_libraries_public}
+		Usp10
+	)
 elseif(CMAKE_TARGET_OS STREQUAL "darwin")
-	include_directories(AFTER SYSTEM
+	set(target_specific_include_dirs_public ${target_specific_include_dirs_public}
 		"${UPSTREAM}/include/utils/mac"
 	)
+	file(GLOB src_utils_mac "${UPSTREAM}/src/utils/mac/*")
+#	file(GLOB src_gpu_gl_mac "${UPSTREAM}/src/gpu/gl/mac/*")
 	set(target_specific_sources "${target_specific_sources}"
 		"${UPSTREAM}/src/ports/SkDebug_stdio.cpp"
 		"${UPSTREAM}/src/ports/SkThread_pthread.cpp"
-		"${UPSTREAM}/src/ports/SkFontHost_mac.cpp"
-		"${UPSTREAM}/src/ports/SkFontHost_mac_coretext.cpp"
-		"${UPSTREAM}/src/ports/SkFontHost_freetype_mac.cpp"
 		"${UPSTREAM}/src/ports/SkTime_Unix.cpp"
-		"${UPSTREAM}/src/utils/mac/SkStream_mac.cpp"
+		"${UPSTREAM}/src/ports/SkImageDecoder_CG.cpp"
+		"${UPSTREAM}/src/ports/SkFontHost_mac.cpp"
+		"${UPSTREAM}/src/ports/SkOSFile_posix.cpp"
+		"${UPSTREAM}/src/ports/SkTLS_pthread.cpp"
+		${src_utils_mac}
+#		${src_gpu_gl_mac}
 	)
-	add_definitions(-DSK_BUILD_FOR_MAC -DSK_USE_CORETEXT)
-elseif(CMAKE_TARGET_OS STREQUAL "linux")
+	set(target_specific_definitions_public ${target_specific_definitions_public}
+		-DSK_BUILD_FOR_MAC
+		-DSK_FONTHOST_USES_FONTMGR
+		-D_CRT_SECURE_NO_WARNINGS
+		-DGR_GL_FUNCTION_TYPE=__stdcall
+	)
+	find_library(CORE_FOUNDATION_LIBRARY CoreFoundation)
+	find_library(CORE_TEXT_LIBRARY CoreText)
+	find_library(CORE_GRAPHICS_LIBRARY CoreGraphics)
+	set(target_specific_libraries_public ${target_specific_libraries_public}
+		${CORE_FOUNDATION_LIBRARY}
+		${CORE_TEXT_LIBRARY}
+		${CORE_GRAPHICS_LIBRARY}
+	)
+elseif(CMAKE_TARGET_OS STREQUAL "ios")
+	set(target_specific_include_dirs_public ${target_specific_include_dirs_public}
+		"${UPSTREAM}/include/utils/mac"
+		"${UPSTREAM}/include/utils/ios"
+	)
+#	file(GLOB src_gpu_gl_ios "${UPSTREAM}/src/gpu/gl/iOS/*")
 	set(target_specific_sources "${target_specific_sources}"
-		"${UPSTREAM}/src/ports/SkFontHost_tables.cpp"
 		"${UPSTREAM}/src/ports/SkDebug_stdio.cpp"
-		"${UPSTREAM}/src/ports/SkFontHost_sandbox_none.cpp"
+		"${UPSTREAM}/src/ports/SkThread_pthread.cpp"
+		"${UPSTREAM}/src/ports/SkTime_Unix.cpp"
+		"${UPSTREAM}/src/ports/SkOSFile_posix.cpp"
+		"${UPSTREAM}/src/ports/SkTLS_pthread.cpp"
+		"${UPSTREAM}/src/ports/SkFontHost_mac.cpp"
+		"${UPSTREAM}/src/utils/mac/SkStream_mac.cpp"
+#		${src_gpu_gl_ios}
+	)
+	set(target_specific_definitions_public ${target_specific_definitions_public}
+		-DSK_BUILD_FOR_IOS
+	)
+	find_library(CORE_FOUNDATION_LIBRARY CoreFoundation)
+	find_library(CORE_TEXT_LIBRARY CoreText)
+	find_library(CORE_GRAPHICS_LIBRARY CoreGraphics)
+	set(target_specific_libraries_public ${target_specific_libraries_public}
+		${CORE_FOUNDATION_LIBRARY}
+		${CORE_TEXT_LIBRARY}
+		${CORE_GRAPHICS_LIBRARY}
+	)
+elseif(CMAKE_TARGET_OS STREQUAL "linux")
+#	file(GLOB src_gpu_gl_unix "${UPSTREAM}/src/gpu/gl/unix/*")
+	set(target_specific_sources "${target_specific_sources}"
+		"${UPSTREAM}/src/ports/SkDebug_stdio.cpp"
 		"${UPSTREAM}/src/ports/SkThread_pthread.cpp"
 		"${UPSTREAM}/src/ports/SkTime_Unix.cpp"
 		"${UPSTREAM}/src/ports/SkFontHost_FreeType_common.cpp"
 		"${UPSTREAM}/src/ports/SkFontHost_FreeType.cpp"
 		"${UPSTREAM}/src/ports/SkFontHost_linux.cpp"
-		"${UPSTREAM}/src/core/SkMMapStream.cpp"
 		"${UPSTREAM}/src/utils/SkThreadUtils_pthread.cpp"
+		"${UPSTREAM}/src/ports/SkOSFile_posix.cpp"
+		"${UPSTREAM}/src/ports/SkTLS_pthread.cpp"
+#		${src_gpu_gl_unix}
 	)
-	add_definitions(-DSK_BUILD_FOR_UNIX)
-endif()
-if(CMAKE_COMPILER_FAMILY STREQUAL "gcc" OR CMAKE_COMPILER_FAMILY STREQUAL "clang")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fno-rtti -fno-exceptions")
+	set(target_specific_definitions_public ${target_specific_definitions_public}
+		-DSK_BUILD_FOR_UNIX
+	)
+#	set(target_specific_dependencies ${target_specific_dependencies}
+#		freetype2_osmand
+#	)
+	set(target_specific_libraries_public ${target_specific_libraries_public}
+		freetype2_osmand
+		pthread
+	)
 endif()
 
+file(GLOB src_core "${UPSTREAM}/src/core/*")
+file(GLOB src_effects "${UPSTREAM}/src/effects/*")
+file(GLOB src_effects_gradients "${UPSTREAM}/src/effects/gradients/*")
+file(GLOB src_image "${UPSTREAM}/src/image/*")
+file(GLOB src_images "${UPSTREAM}/src/images/*")
+file(GLOB src_images__remove
+	"${UPSTREAM}/src/images/SkImageDecoder_libwebp.*"
+	"${UPSTREAM}/src/images/SkImageRef_ashmem.*")
+list(REMOVE_ITEM src_images ${src_images__remove})
+file(GLOB src_sfnt "${UPSTREAM}/src/sfnt/*")
+file(GLOB src_pathops "${UPSTREAM}/src/pathops/*")
+file(GLOB src_pathops__remove
+	"${UPSTREAM}/src/pathops/main.cpp")
+list(REMOVE_ITEM src_pathops ${src_pathops__remove})
+#file(GLOB src_gpu "${UPSTREAM}/src/gpu/*")
+#file(GLOB src_gpu__remove
+#	"${UPSTREAM}/src/gpu/GrAddPathRenderers*"
+#	"${UPSTREAM}/src/gpu/gr_unittests.cpp"
+#	"${UPSTREAM}/src/gpu/FlingState.cpp"
+#	"${UPSTREAM}/src/gpu/GrRectanizer_fifo.cpp")
+#list(REMOVE_ITEM src_gpu ${src_gpu__remove})
+#file(GLOB src_gpu_effects "${UPSTREAM}/src/gpu/effects/*")
+#file(GLOB src_gpu_gl "${UPSTREAM}/src/gpu/gl/*")
+#file(GLOB src_gpu_gl__remove
+#	"${UPSTREAM}/src/gpu/gl/GrGLCreateNativeInterface_none.cpp"
+#	"${UPSTREAM}/src/gpu/gl/GrGLDefaultInterface_none.cpp")
+#list(REMOVE_ITEM src_gpu_gl ${src_gpu_gl__remove})
+
 add_library(skia_osmand STATIC
-	"${UPSTREAM}/src/core/Sk64.cpp"
-	"${UPSTREAM}/src/core/SkAAClip.cpp"
-	"${UPSTREAM}/src/core/SkAdvancedTypefaceMetrics.cpp"
-	"${UPSTREAM}/src/core/SkAlphaRuns.cpp"
-	"${UPSTREAM}/src/core/SkAnnotation.cpp"
-	"${UPSTREAM}/src/core/SkBBoxHierarchy.cpp"
-	"${UPSTREAM}/src/core/SkBBoxHierarchyRecord.cpp"
-	"${UPSTREAM}/src/core/SkBBoxRecord.cpp"
-	"${UPSTREAM}/src/core/SkBitmap.cpp"
-	"${UPSTREAM}/src/core/SkBitmapHeap.cpp"
-	"${UPSTREAM}/src/core/SkBitmapProcShader.cpp"
-	"${UPSTREAM}/src/core/SkBitmapProcState.cpp"
-	"${UPSTREAM}/src/core/SkBitmapProcState_matrixProcs.cpp"
-	"${UPSTREAM}/src/core/SkBitmapSampler.cpp"
-	"${UPSTREAM}/src/core/SkBitmap_scroll.cpp"
-	"${UPSTREAM}/src/core/SkBlitMask_D32.cpp"
-	"${UPSTREAM}/src/core/SkBlitRow_D16.cpp"
-	"${UPSTREAM}/src/core/SkBlitRow_D32.cpp"
-	"${UPSTREAM}/src/core/SkBlitRow_D4444.cpp"
-	"${UPSTREAM}/src/core/SkBlitter.cpp"
-	"${UPSTREAM}/src/core/SkBlitter_4444.cpp"
-	"${UPSTREAM}/src/core/SkBlitter_A1.cpp"
-	"${UPSTREAM}/src/core/SkBlitter_A8.cpp"
-	"${UPSTREAM}/src/core/SkBlitter_ARGB32.cpp"
-	"${UPSTREAM}/src/core/SkBlitter_RGB16.cpp"
-	"${UPSTREAM}/src/core/SkBlitter_Sprite.cpp"
-	"${UPSTREAM}/src/core/SkBuffer.cpp"
-	"${UPSTREAM}/src/core/SkCanvas.cpp"
-	"${UPSTREAM}/src/core/SkChunkAlloc.cpp"
-	"${UPSTREAM}/src/core/SkClipStack.cpp"
-	"${UPSTREAM}/src/core/SkColor.cpp"
-	"${UPSTREAM}/src/core/SkColorFilter.cpp"
-	"${UPSTREAM}/src/core/SkColorTable.cpp"
-	"${UPSTREAM}/src/core/SkComposeShader.cpp"
-	"${UPSTREAM}/src/core/SkConfig8888.cpp"
-	"${UPSTREAM}/src/core/SkCordic.cpp"
-	"${UPSTREAM}/src/core/SkCubicClipper.cpp"
-	"${UPSTREAM}/src/core/SkData.cpp"
-	"${UPSTREAM}/src/core/SkDebug.cpp"
-	"${UPSTREAM}/src/core/SkDeque.cpp"
-	"${UPSTREAM}/src/core/SkDevice.cpp"
-	"${UPSTREAM}/src/core/SkDeviceProfile.cpp"
-	"${UPSTREAM}/src/core/SkDither.cpp"
-	"${UPSTREAM}/src/core/SkDraw.cpp"
-	"${UPSTREAM}/src/core/SkEdge.cpp"
-	"${UPSTREAM}/src/core/SkEdgeBuilder.cpp"
-	"${UPSTREAM}/src/core/SkEdgeClipper.cpp"
-	"${UPSTREAM}/src/core/SkFilterProc.cpp"
-	"${UPSTREAM}/src/core/SkFlate.cpp"
-	"${UPSTREAM}/src/core/SkFlattenable.cpp"
-	"${UPSTREAM}/src/core/SkFlattenableBuffers.cpp"
-	"${UPSTREAM}/src/core/SkFloat.cpp"
-	"${UPSTREAM}/src/core/SkFloatBits.cpp"
-	"${UPSTREAM}/src/core/SkFontDescriptor.cpp"
-	"${UPSTREAM}/src/core/SkFontHost.cpp"
-	"${UPSTREAM}/src/core/SkGeometry.cpp"
-	"${UPSTREAM}/src/core/SkGlyphCache.cpp"
-	"${UPSTREAM}/src/core/SkGraphics.cpp"
-	"${UPSTREAM}/src/core/SkImageFilter.cpp"
-	"${UPSTREAM}/src/core/SkInstCnt.cpp"
-	"${UPSTREAM}/src/core/SkLineClipper.cpp"
-	"${UPSTREAM}/src/core/SkMallocPixelRef.cpp"
-	"${UPSTREAM}/src/core/SkMask.cpp"
-	"${UPSTREAM}/src/core/SkMaskFilter.cpp"
-	"${UPSTREAM}/src/core/SkMaskGamma.cpp"
-	"${UPSTREAM}/src/core/SkMath.cpp"
-	"${UPSTREAM}/src/core/SkMatrix.cpp"
-	"${UPSTREAM}/src/core/SkMetaData.cpp"
-	"${UPSTREAM}/src/core/SkOrderedReadBuffer.cpp"
-	"${UPSTREAM}/src/core/SkOrderedWriteBuffer.cpp"
-	"${UPSTREAM}/src/core/SkPackBits.cpp"
-	"${UPSTREAM}/src/core/SkPaint.cpp"
-	"${UPSTREAM}/src/core/SkPaintPriv.cpp"
-	"${UPSTREAM}/src/core/SkPath.cpp"
-	"${UPSTREAM}/src/core/SkPathEffect.cpp"
-	"${UPSTREAM}/src/core/SkPathHeap.cpp"
-	"${UPSTREAM}/src/core/SkPathMeasure.cpp"
-	"${UPSTREAM}/src/core/SkPicture.cpp"
-	"${UPSTREAM}/src/core/SkPictureFlat.cpp"
-	"${UPSTREAM}/src/core/SkPicturePlayback.cpp"
-	"${UPSTREAM}/src/core/SkPictureRecord.cpp"
-	"${UPSTREAM}/src/core/SkPictureStateTree.cpp"
-	"${UPSTREAM}/src/core/SkPixelRef.cpp"
-	"${UPSTREAM}/src/core/SkPoint.cpp"
-	"${UPSTREAM}/src/core/SkProcSpriteBlitter.cpp"
-	"${UPSTREAM}/src/core/SkPtrRecorder.cpp"
-	"${UPSTREAM}/src/core/SkQuadClipper.cpp"
-	"${UPSTREAM}/src/core/SkRasterClip.cpp"
-	"${UPSTREAM}/src/core/SkRasterizer.cpp"
-	"${UPSTREAM}/src/core/SkRect.cpp"
-	"${UPSTREAM}/src/core/SkRefCnt.cpp"
-	"${UPSTREAM}/src/core/SkRefDict.cpp"
-	"${UPSTREAM}/src/core/SkRegion.cpp"
-	"${UPSTREAM}/src/core/SkRegion_path.cpp"
-	"${UPSTREAM}/src/core/SkRegion_rects.cpp"
-	"${UPSTREAM}/src/core/SkRRect.cpp"
-	"${UPSTREAM}/src/core/SkRTree.cpp"
-	"${UPSTREAM}/src/core/SkScalar.cpp"
-	"${UPSTREAM}/src/core/SkScalerContext.cpp"
-	"${UPSTREAM}/src/core/SkScan.cpp"
-	"${UPSTREAM}/src/core/SkScan_Antihair.cpp"
-	"${UPSTREAM}/src/core/SkScan_AntiPath.cpp"
-	"${UPSTREAM}/src/core/SkScan_Hairline.cpp"
-	"${UPSTREAM}/src/core/SkScan_Path.cpp"
-	"${UPSTREAM}/src/core/SkShader.cpp"
-	"${UPSTREAM}/src/core/SkSpriteBlitter_ARGB32.cpp"
-	"${UPSTREAM}/src/core/SkSpriteBlitter_RGB16.cpp"
-	"${UPSTREAM}/src/core/SkStream.cpp"
-	"${UPSTREAM}/src/core/SkString.cpp"
-	"${UPSTREAM}/src/core/SkStroke.cpp"
-	"${UPSTREAM}/src/core/SkStrokeRec.cpp"
-	"${UPSTREAM}/src/core/SkStrokerPriv.cpp"
-	"${UPSTREAM}/src/core/SkTileGrid.cpp"
-	"${UPSTREAM}/src/core/SkTLS.cpp"
-	"${UPSTREAM}/src/core/SkTSearch.cpp"
-	"${UPSTREAM}/src/core/SkTypeface.cpp"
-	"${UPSTREAM}/src/core/SkTypefaceCache.cpp"
-	"${UPSTREAM}/src/core/SkUnPreMultiply.cpp"
-	"${UPSTREAM}/src/core/SkUtils.cpp"
-	"${UPSTREAM}/src/core/SkUtilsArm.cpp"
-	"${UPSTREAM}/src/core/SkWriter32.cpp"
-	"${UPSTREAM}/src/core/SkXfermode.cpp"
-	"${UPSTREAM}/src/effects/Sk1DPathEffect.cpp"
-	"${UPSTREAM}/src/effects/Sk2DPathEffect.cpp"
-	"${UPSTREAM}/src/effects/SkArithmeticMode.cpp"
-	"${UPSTREAM}/src/effects/SkAvoidXfermode.cpp"
-	"${UPSTREAM}/src/effects/SkBitmapSource.cpp"
-	"${UPSTREAM}/src/effects/SkBicubicImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkBlurDrawLooper.cpp"
-	"${UPSTREAM}/src/effects/SkBlurImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkBlurMask.cpp"
-	"${UPSTREAM}/src/effects/SkBlurMaskFilter.cpp"
-	"${UPSTREAM}/src/effects/SkColorFilters.cpp"
-	"${UPSTREAM}/src/effects/SkColorMatrix.cpp"
-	"${UPSTREAM}/src/effects/SkColorMatrixFilter.cpp"
-	"${UPSTREAM}/src/effects/SkCornerPathEffect.cpp"
-	"${UPSTREAM}/src/effects/SkDashPathEffect.cpp"
-	"${UPSTREAM}/src/effects/SkDiscretePathEffect.cpp"
-	"${UPSTREAM}/src/effects/SkDisplacementMapEffect.cpp"
-	"${UPSTREAM}/src/effects/SkEmbossMask.cpp"
-	"${UPSTREAM}/src/effects/SkEmbossMaskFilter.cpp"
-	"${UPSTREAM}/src/effects/SkKernel33MaskFilter.cpp"
-	"${UPSTREAM}/src/effects/SkLayerDrawLooper.cpp"
-	"${UPSTREAM}/src/effects/SkLayerRasterizer.cpp"
-	"${UPSTREAM}/src/effects/SkMorphologyImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkOffsetImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkPaintFlagsDrawFilter.cpp"
-	"${UPSTREAM}/src/effects/SkPixelXorXfermode.cpp"
-	"${UPSTREAM}/src/effects/SkPorterDuff.cpp"
-	"${UPSTREAM}/src/effects/SkStippleMaskFilter.cpp"
-	"${UPSTREAM}/src/effects/SkTableColorFilter.cpp"
-	"${UPSTREAM}/src/effects/SkTableMaskFilter.cpp"
-	"${UPSTREAM}/src/effects/SkTestImageFilters.cpp"
-	"${UPSTREAM}/src/effects/SkTransparentShader.cpp"
-	"${UPSTREAM}/src/effects/SkLightingImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkBlendImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkMagnifierImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkMergeImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkColorFilterImageFilter.cpp"
-	"${UPSTREAM}/src/effects/SkMatrixConvolutionImageFilter.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkBitmapCache.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkGradientShader.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkTwoPointConicalGradient.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkTwoPointRadialGradient.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkSweepGradient.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkRadialGradient.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkLinearGradient.cpp"
-	"${UPSTREAM}/src/effects/gradients/SkClampRange.cpp"
-	"${UPSTREAM}/src/image/SkSurface.cpp"
-	"${UPSTREAM}/src/image/SkImage.cpp"
-	"${UPSTREAM}/src/images/bmpdecoderhelper.cpp"
-	"${UPSTREAM}/src/images/SkBitmapFactory.cpp"
-	"${UPSTREAM}/src/images/SkImageDecoder.cpp"
-	"${UPSTREAM}/src/images/SkImageDecoder_Factory.cpp"
-	"${UPSTREAM}/src/images/SkImageDecoder_libgif.cpp"
-	"${UPSTREAM}/src/images/SkImageDecoder_libjpeg.cpp"
-	"${UPSTREAM}/src/images/SkImageDecoder_libpng.cpp"
-	"${UPSTREAM}/src/images/SkImageEncoder.cpp"
-	"${UPSTREAM}/src/images/SkImageEncoder_Factory.cpp"
-	"${UPSTREAM}/src/images/SkImageRef.cpp"
-	"${UPSTREAM}/src/images/SkImageRefPool.cpp"
-	"${UPSTREAM}/src/images/SkImageRef_GlobalPool.cpp"
-	"${UPSTREAM}/src/images/SkImages.cpp"
-	"${UPSTREAM}/src/images/SkJpegUtility.cpp"
-	"${UPSTREAM}/src/images/SkMovie.cpp"
-	"${UPSTREAM}/src/images/SkMovie_gif.cpp"
-	"${UPSTREAM}/src/images/SkPageFlipper.cpp"
-	"${UPSTREAM}/src/images/SkScaledBitmapSampler.cpp"
-	"${UPSTREAM}/src/sfnt/SkOTUtils.cpp"
+	${src_core}
+	${src_effects}
+	${src_effects_gradients}
+	${src_image}
+	${src_images}
+	${src_sfnt}
+	${src_pathops}
+#	${src_gpu}
+#	"${UPSTREAM}/src/gpu/GrAddPathRenderers_default.cpp"
+#	${src_gpu_effects}
+#	${src_gpu_gl}
 	"${UPSTREAM}/src/utils/SkBase64.cpp"
 	"${UPSTREAM}/src/utils/SkBitSet.cpp"
 	"${UPSTREAM}/src/utils/SkBoundaryPatch.cpp"
@@ -304,32 +257,96 @@ add_library(skia_osmand STATIC
 	"${UPSTREAM}/src/utils/SkUnitMappers.cpp"
 	"${UPSTREAM}/src/pipe/SkGPipeRead.cpp"
 	"${UPSTREAM}/src/pipe/SkGPipeWrite.cpp"
+	"${UPSTREAM}/src/ports/SkGlobalInitialization_default.cpp"
+	"${UPSTREAM}/src/ports/SkOSFile_stdio.cpp"
 	${target_specific_sources}
 )
 
-target_link_libraries(skia_osmand LINK_PUBLIC
+add_dependencies(skia_osmand
 	expat_osmand
-	freetype2_osmand
 	png_osmand
 	gif_osmand
 	jpeg_osmand
+#	${target_specific_dependencies}
 )
-	
-if(CMAKE_TARGET_OS STREQUAL "linux")
-	target_link_libraries(skia_osmand LINK_PUBLIC
-		pthread
-	)
-elseif(CMAKE_TARGET_OS STREQUAL "darwin")
-	find_library(CORE_FOUNDATION_LIBRARY CoreFoundation)
-	find_library(CORE_TEXT_LIBRARY CoreText)
-	find_library(CORE_GRAPHICS_LIBRARY CoreGraphics)
-	target_link_libraries(skia_osmand LINK_PUBLIC
-		${CORE_FOUNDATION_LIBRARY}
-		${CORE_TEXT_LIBRARY}
-		${CORE_GRAPHICS_LIBRARY}
-	)	
-elseif(CMAKE_TARGET_OS STREQUAL "windows")
-	target_link_libraries(skia_osmand LINK_PUBLIC
-		Usp10
-	)
+
+add_definitions(-DSK_RELEASE -DGR_RELEASE=1 -DNDEBUG -DSK_SUPPORT_GPU=0)
+add_definitions(
+		${target_specific_definitions_public}
+)
+
+if(CMAKE_COMPILER_FAMILY STREQUAL "gcc" OR CMAKE_COMPILER_FAMILY STREQUAL "clang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fno-rtti -fno-exceptions")
+endif()
+
+include_directories(AFTER SYSTEM
+#	PRIVATE
+		"${UPSTREAM}/src/core"
+		"${UPSTREAM}/src/config"
+		"${UPSTREAM}/src/effects"
+		"${UPSTREAM}/src/image"
+		"${UPSTREAM}/src/images"
+		"${UPSTREAM}/src/ports"
+		"${UPSTREAM}/src/utils"
+		"${UPSTREAM}/src/xml"
+		"${UPSTREAM}/src/sfnt"
+#		"${UPSTREAM}/src/gpu"
+		${target_specific_include_dirs_private}
+#	PUBLIC
+		"${OSMAND_ROOT}/externals/freetype/upstream.patched/include"
+		"${OSMAND_ROOT}/externals/giflib/upstream.patched/lib"
+		"${OSMAND_ROOT}/externals/jpeg/upstream.patched"
+		"${OSMAND_ROOT}/externals/libpng/upstream.patched"
+		"${UPSTREAM}/include/core"
+		"${UPSTREAM}/include/lazy"
+		"${UPSTREAM}/include/pathops"
+		"${UPSTREAM}/src/core"
+		"${UPSTREAM}/include/config"
+		"${UPSTREAM}/include/effects"
+		"${UPSTREAM}/include/images"
+		"${UPSTREAM}/include/pipe"
+		"${UPSTREAM}/include/ports"
+		"${UPSTREAM}/include/utils"
+		"${UPSTREAM}/include/xml"
+		"${UPSTREAM}/include/gpu"
+		${target_specific_include_dirs_public}
+)
+target_link_libraries(skia_osmand
+	LINK_PUBLIC
+		expat_osmand
+		png_osmand
+		gif_osmand
+		jpeg_osmand
+		${target_specific_libraries_public}
+)
+
+if(CMAKE_TARGET_CPU_ARCH_FAMILY STREQUAL "fat" AND CMAKE_TARGET_OS STREQUAL "ios")
+	set(ios_iphoneos_exclude_list
+		"opts_check_SSE2.cpp"
+		"SkBitmapFilter_opts_SSE2.cpp"
+		"SkBitmapProcState_opts_SSE2.cpp"
+		"SkBitmapProcState_opts_SSSE3.cpp"
+		"SkBlitRect_opts_SSE2.cpp"
+		"SkBlitRow_opts_SSE2.cpp"
+		"SkUtils_opts_SSE2.cpp")
+	string(REPLACE ";" " " ios_iphoneos_exclude "${ios_iphoneos_exclude_list}")
+	set_target_properties(skia_osmand
+		PROPERTIES
+			XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*][arch=*] "${ios_iphoneos_exclude}")
+
+	set(ios_iphonesimulator_exclude_list
+		"opts_check_arm.cpp"
+		"SkBlitRow_opts_arm.cpp"
+		"SkBlitRow_opts_arm_neon.cpp"
+		"SkBlitMask_opts_arm.cpp"
+		"SkBitmapProcState_opts_arm.cpp"
+		"SkBitmapProcState_matrixProcs_neon.cpp"
+		"SkBitmapProcState_arm_neon.cpp"
+		"memset32_neon.S"
+		"memset16_neon.S"
+		"memset.arm.S")
+	string(REPLACE ";" " " ios_iphonesimulator_exclude "${ios_iphonesimulator_exclude_list}")
+	set_target_properties(skia_static
+		PROPERTIES
+			XCODE_ATTRIBUTE_EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*][arch=*] "${ios_iphonesimulator_exclude}")
 endif()

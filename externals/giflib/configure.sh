@@ -17,14 +17,13 @@ if [ ! -f "$SRCLOC/upstream.pack" ]; then
 fi
 
 # Extract upstream if needed
-if [ ! -d "$SRCLOC/upstream.original" ]; then
+if [ ! -d "$SRCLOC/upstream.patched" ]; then
 	echo "Extracting '$NAME' upstream..."
-	mkdir -p $SRCLOC/upstream.original
-	tar -xf "$SRCLOC/upstream.pack" -C "$SRCLOC/upstream.original" --strip 1	
+	mkdir -p $SRCLOC/upstream.patched
+	tar -xf "$SRCLOC/upstream.pack" -C "$SRCLOC/upstream.patched" --strip 1	
 fi
 
 # Patch
-cp -rf "$SRCLOC/upstream.original" "$SRCLOC/upstream.patched"
 if [ -d "$SRCLOC/patches" ]; then
 	echo "Patching '$NAME'..."
 	PATCHES=`ls -1 $SRCLOC/patches/*.patch | sort`

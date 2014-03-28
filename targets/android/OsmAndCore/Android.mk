@@ -2,26 +2,10 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-OSMAND_PROTOBUF := $(LOCAL_PATH)/../../../externals/protobuf/upstream.patched
-OSMAND_SKIA_ROOT := $(LOCAL_PATH)/../../../externals/skia
-OSMAND_SKIA := $(LOCAL_PATH)/../../../externals/skia/upstream.patched
-OSMAND_EXPAT := $(LOCAL_PATH)/../../../externals/expat/upstream.patched
 OSMAND_CORE_RELATIVE := ../../../native
 OSMAND_CORE := $(LOCAL_PATH)/$(OSMAND_CORE_RELATIVE)
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/src \
-    $(OSMAND_PROTOBUF)/src \
-	$(OSMAND_SKIA_ROOT) \
-	$(OSMAND_SKIA) \
-	$(OSMAND_EXPAT)/lib \
-	$(OSMAND_SKIA)/include/core \
-	$(OSMAND_SKIA)/include/config \
-	$(OSMAND_SKIA)/include/effects \
-	$(OSMAND_SKIA)/include/images \
-	$(OSMAND_SKIA)/include/ports \
-	$(OSMAND_SKIA)/include/utils \
-	$(OSMAND_SKIA)/include/utils/android \
-	$(OSMAND_SKIA)/src/core \
 	$(OSMAND_CORE)/include \
 	$(OSMAND_CORE)/src
 
@@ -63,26 +47,23 @@ LOCAL_CFLAGS := \
 	-DGR_RELEASE=1 \
 	-DANDROID_BUILD \
 	-fPIC
-	
-ifneq ($(LOCAL_ARM_NEON),true)
-	LOCAL_STATIC_LIBRARIES := \
-		osmand_protobuf \
-		osmand_jpeg \
-		osmand_ft2 \
-		osmand_png \
-		osmand_gif \
-		osmand_expat
-	LOCAL_WHOLE_STATIC_LIBRARIES := osmand_skia
+
+ifeq ($(LOCAL_ARM_NEON),true)
+    OSMAND_BINARY_SUFFIX := _neon
 else
-	LOCAL_STATIC_LIBRARIES := \
-		osmand_protobuf_neon \
-		osmand_jpeg_neon \
-		osmand_ft2_neon \
-		osmand_png_neon \
-		osmand_gif_neon \
-		osmand_expat_neon
-	LOCAL_WHOLE_STATIC_LIBRARIES := osmand_skia_neon
+    OSMAND_BINARY_SUFFIX :=
 endif
+
+LOCAL_STATIC_LIBRARIES := \
+    osmand_protobuf$(OSMAND_BINARY_SUFFIX) \
+    osmand_skia$(OSMAND_BINARY_SUFFIX) \
+#		osmand_jpeg \
+#		osmand_ft2 \
+#		osmand_png \
+#		osmand_gif \
+#		osmand_expat
+
+#LOCAL_WHOLE_STATIC_LIBRARIES := osmand_skia$(OSMAND_BINARY_SUFFIX)
 
 LOCAL_LDLIBS := -lz -llog -ldl
 

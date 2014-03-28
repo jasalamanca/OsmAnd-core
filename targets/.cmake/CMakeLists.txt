@@ -35,11 +35,11 @@ if(CMAKE_CXX_COMPILER_FLAGS)
 endif()
 
 # External : z
-add_subdirectory("${OSMAND_PROJECTS_ROOT}/zlib" "zlib")
+#add_subdirectory("${OSMAND_PROJECTS_ROOT}/zlib" "zlib")
 
 # External : png
 add_subdirectory("${OSMAND_PROJECTS_ROOT}/libpng" "libpng")
-add_dependencies(png_osmand z_osmand)
+#add_dependencies(png_osmand z_osmand)
 
 # External : expat
 add_subdirectory("${OSMAND_PROJECTS_ROOT}/expat" "expat")
@@ -58,8 +58,8 @@ add_subdirectory("${OSMAND_PROJECTS_ROOT}/protobuf" "protobuf")
 
 # External : skia
 add_subdirectory("${OSMAND_PROJECTS_ROOT}/skia" "skia")
-add_dependencies(skia_osmand png_osmand gif_osmand jpeg_osmand expat_osmand freetype2_osmand)
+#add_dependencies(skia_osmand png_osmand gif_osmand jpeg_osmand expat_osmand freetype2_osmand)
 
 # OsmAnd core
 add_subdirectory("${OSMAND_PROJECTS_ROOT}/OsmAndCore" "OsmAndCore")
-add_dependencies(osmand	skia_osmand protobuf_osmand)
+#add_dependencies(osmand	skia_osmand protobuf_osmand)

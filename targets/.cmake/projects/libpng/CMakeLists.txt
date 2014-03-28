@@ -28,6 +28,6 @@ add_library(png_osmand STATIC
 	"${UPSTREAM}/pngwutil.c"
 )
 
-target_link_libraries(png_osmand LINK_PUBLIC
-	z_osmand
-)
+#target_link_libraries(png_osmand LINK_PUBLIC
+#	z_osmand
+#)

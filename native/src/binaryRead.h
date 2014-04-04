@@ -137,7 +137,7 @@ struct RouteDataObject {
 	bool loop(){
 		return pointsX[0] == pointsX[pointsX.size() - 1] && pointsY[0] == pointsY[pointsY.size() - 1] ; 
 	}
-	
+
 	bool roundabout(){
 		uint sz = types.size();
 		for(uint i=0; i < sz; i++) {
@@ -189,7 +189,7 @@ struct RouteDataObject {
 		return -atan2(x - px, y - py);
 	}
 
-	static double parseSpeed(string v, double def) {
+	static double parseSpeed(std::string const & v, double def) {
 		if(v == "none") {
 			return 40;// RouteDataObject::NONE_MAX_SPEED;
 		} else {
@@ -197,7 +197,7 @@ struct RouteDataObject {
 			if (i > 0) {
 				double f = atof(v.substr(0, i).c_str());
 				f /= 3.6; // km/h -> m/s
-				if (v.find("mph") != string::npos) {
+				if (v.find("mph") != std::string::npos) {
 					f *= 1.6;
 				}
 				return f;
@@ -205,13 +205,13 @@ struct RouteDataObject {
 		}
 		return def;
 	}
-	
-	static double parseLength(string v, double def) {
+
+	static double parseLength(std::string const & v, double def) {
 		// 14"10' not supported
 		int i = findFirstNumberEndIndex(v);
 		if (i > 0) {
 			double f = atof(v.substr(0, i).c_str());
-			if (v.find("\"") != string::npos  || v.find("ft") != string::npos) {
+			if (v.find("\"") != std::string::npos  || v.find("ft") != std::string::npos) {
 				// foot to meters
 				f *= 0.3048;
 			}
@@ -219,12 +219,12 @@ struct RouteDataObject {
 		}
 		return def;
 	}
-	
-	static double parseWeightInTon(string v, double def) {
+
+	static double parseWeightInTon(std::string const & v, double def) {
 		int i = findFirstNumberEndIndex(v);
 		if (i > 0) {
 			double f = atof(v.substr(0, i).c_str());
-			if (v.find("\"") != string::npos || v.find("lbs") != string::npos) {
+			if (v.find("\"") != std::string::npos || v.find("lbs") != std::string::npos) {
 				// lbs -> kg -> ton
 				f = (f * 0.4535) / 1000.0;
 			}
@@ -374,7 +374,7 @@ void searchRouteSubregions(SearchQuery const * q, std::vector<RouteSubregion>& t
 
 void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list, RouteSubregion const * sub);
 
-ResultPublisher* searchObjectsForRendering(SearchQuery* q, bool skipDuplicates, int renderRouteDataFile, std::string msgNothingFound, int& renderedState);
+ResultPublisher* searchObjectsForRendering(SearchQuery* q, bool skipDuplicates, int renderRouteDataFile, std::string const & msgNothingFound, int& renderedState);
 
 BinaryMapFile* initBinaryMapFile(std::string const & inputName);
 

@@ -230,9 +230,9 @@ class RenderingRulesHandler {
 	public:
 	static void startElementHandler(void *data, const char *tag, const char **atts) {
 		RenderingRulesHandler* t = (RenderingRulesHandler*) data;
-		string name(tag);
+		std::string name(tag);
 		if ("filter" == name) {
-			map<string, string> attrsMap;
+			Attributes attrsMap;
 			if (!t->st.empty() && t->st.top().isGroup()) {
 				attrsMap.insert(t->st.top().groupAttributes.begin(), t->st.top().groupAttributes.end());
 			}
@@ -374,12 +374,12 @@ void RenderingRule::printDebugRenderingRule(std::string & indent, RenderingRules
 	}
 	std::vector<RenderingRule*>::const_iterator it = ifElseChildren.begin();
 	for (; it != ifElseChildren.end(); it++) {
-		string cindent = indent + "  + ";
+		std::string cindent = indent + "  + ";
 		(*it)->printDebugRenderingRule(cindent, st);
 	}
 	it = ifChildren.begin();
 	for (; it != ifChildren.end(); it++) {
-		string cindent = indent + "  o  ";
+		std::string cindent = indent + "  o  ";
 		(*it)->printDebugRenderingRule(cindent, st);
 	}
 }

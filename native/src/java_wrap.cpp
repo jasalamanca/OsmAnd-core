@@ -727,9 +727,9 @@ jobject convertRouteSegmentResultToJava(JNIEnv* ienv, RouteSegmentResult& r, UNO
 		reg = ienv->GetObjectArrayElement(regions, indexes[(fp <<31) + ln]);
 	}
 	jobjectArray ar = ienv->NewObjectArray(r.attachedRoutes.size(), jclass_RouteSegmentResultAr, NULL);
-	for(jsize k = 0; k < (jsize)r.attachedRoutes.size(); k++) {
+	for(jsize k = 0; k < r.attachedRoutes.size(); k++) {
 		jobjectArray art = ienv->NewObjectArray(r.attachedRoutes[k].size(), jclass_RouteSegmentResult, NULL);
-		for(jsize kj = 0; kj < (jsize)r.attachedRoutes[k].size(); kj++) {
+		for(jsize kj = 0; kj < r.attachedRoutes[k].size(); kj++) {
 			jobject jo = convertRouteSegmentResultToJava(ienv, r.attachedRoutes[k][kj], indexes, regions);
 			ienv->SetObjectArrayElement(art, kj, jo);
 			ienv->DeleteLocalRef(jo);
@@ -832,8 +832,8 @@ void parsePrecalculatedRoute(JNIEnv* ienv, RoutingContext& ctx,  jobject precalc
 	}
 }
 
-vector<string> convertJArrayToStrings(JNIEnv* ienv, jobjectArray ar) {
-	vector<string> res;
+std::vector<std::string> convertJArrayToStrings(JNIEnv* ienv, jobjectArray ar) {
+	std::vector<std::string> res;
 	for(int i = 0; i < ienv->GetArrayLength(ar); i++) {
 		// RouteAttributeContext
 		jstring s = (jstring) ienv->GetObjectArrayElement(ar, i);
@@ -849,10 +849,10 @@ vector<string> convertJArrayToStrings(JNIEnv* ienv, jobjectArray ar) {
 
 void parseRouteAttributeEvalRule(JNIEnv* ienv, jobject rule, RouteAttributeEvalRule* erule, GeneralRouter* router) {
 	jstring jselectValue = (jstring) ienv->GetObjectField(rule, jfield_RouteAttributeEvalRule_selectValueDef);
-	string selectValue = getString(ienv, jselectValue);
+	std::string selectValue = getString(ienv, jselectValue);
 	ienv->DeleteLocalRef(jselectValue);
 	jstring jselectType = (jstring) ienv->GetObjectField(rule, jfield_RouteAttributeEvalRule_selectType);
-	string selectType;
+	std::string selectType;
 	if(jselectType) {
 		selectType = getString(ienv, jselectType);
 		ienv->DeleteLocalRef(jselectType);
@@ -861,16 +861,16 @@ void parseRouteAttributeEvalRule(JNIEnv* ienv, jobject rule, RouteAttributeEvalR
 	erule->registerSelectValue(selectValue, selectType); 
 
 	jobjectArray ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getParameters);
-	vector<string> params = convertJArrayToStrings(ienv, ar);
+	std::vector<std::string> params = convertJArrayToStrings(ienv, ar);
 	ienv->DeleteLocalRef(ar);
-	erule->registerParamConditions(params); 
+	erule->registerParamConditions(params);
 
 	ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getTagValueCondDefValue);
-	vector<string> tagValueDefValues = convertJArrayToStrings(ienv, ar);
+	std::vector<std::string> tagValueDefValues = convertJArrayToStrings(ienv, ar);
 	ienv->DeleteLocalRef(ar);
 
 	ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getTagValueCondDefTag);
-	vector<string> tagValueDefTags = convertJArrayToStrings(ienv, ar);
+	std::vector<std::string> tagValueDefTags = convertJArrayToStrings(ienv, ar);
 	ienv->DeleteLocalRef(ar);
 
 	jbooleanArray tagValueDefNot = (jbooleanArray)ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getTagValueCondDefNot);
@@ -880,18 +880,17 @@ void parseRouteAttributeEvalRule(JNIEnv* ienv, jobject rule, RouteAttributeEvalR
 	}
 	ienv->ReleaseBooleanArrayElements(tagValueDefNot, nots, 0);
 	ienv->DeleteLocalRef(tagValueDefNot);
-	
 
 	jobjectArray expressions = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getExpressions);
 	for(int j = 0; j < ienv->GetArrayLength(expressions); j++) {
 		jobject expr = ienv->GetObjectArrayElement(expressions, j);
 		jobjectArray jvls  = (jobjectArray) ienv->GetObjectField(expr, jfield_RouteAttributeExpression_values);
-		vector<string> values = convertJArrayToStrings(ienv, jvls);
+		std::vector<std::string> values = convertJArrayToStrings(ienv, jvls);
 		ienv->DeleteLocalRef(jvls);
 		int expressionType = ienv->GetIntField(expr, jfield_RouteAttributeExpression_expressionType);
 		
 		jstring jvalueType = (jstring) ienv->GetObjectField(expr, jfield_RouteAttributeExpression_valueType);
-		string valueType;
+		std::string valueType;
 		if(jselectType) {
 			valueType = getString(ienv, jvalueType);
 			ienv->DeleteLocalRef(jvalueType);
@@ -934,10 +933,10 @@ void parseRouteConfiguration(JNIEnv* ienv, RoutingConfiguration& rConfig, jobjec
 		RouteAttributeContext* rctx = rConfig.router.newRouteAttributeContext();
 		jobject ctx = ienv->GetObjectArrayElement(objectAttributes, i);
 		jobjectArray ar = (jobjectArray) ienv->CallObjectMethod(ctx, jmethod_RouteAttributeContext_getParamKeys);
-		vector<string> paramKeys = convertJArrayToStrings(ienv, ar);
+		std::vector<std::string> paramKeys = convertJArrayToStrings(ienv, ar);
 		ienv->DeleteLocalRef(ar);
 		ar = (jobjectArray) ienv->CallObjectMethod(ctx, jmethod_RouteAttributeContext_getParamValues);
-		vector<string> paramValues = convertJArrayToStrings(ienv, ar);
+		std::vector<std::string> paramValues = convertJArrayToStrings(ienv, ar);
 		ienv->DeleteLocalRef(ar);
 
 		rctx->registerParams(paramKeys, paramValues);
@@ -1015,7 +1014,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_getRoute
 	uint64_t lr = ((uint64_t) x31 << 31) + y31;
 	std::vector<RouteDataObject*> collected = t->cachedByLocations[lr];
 	jobjectArray res = ienv->NewObjectArray(collected.size(), jclass_RouteDataObject, NULL);
-	for (jint i = 0; i < (int)collected.size(); i++) {
+	for (jint i = 0; i < collected.size(); i++) {
 		jobject robj = convertRouteDataObjectToJava(ienv, collected[i], reg);
 		ienv->SetObjectArrayElement(res, i, robj);
 		ienv->DeleteLocalRef(robj);
@@ -1046,7 +1045,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 
 	if (loadObjects) {
 		jobjectArray res = ienv->NewObjectArray(result.size(), jclass_RouteDataObject, NULL);
-		for (jint i = 0; i < (jint)result.size(); i++) {
+		for (jint i = 0; i < result.size(); i++) {
 			if (result[i] != NULL) {
 				jobject robj = convertRouteDataObjectToJava(ienv, result[i], reg);
 				ienv->SetObjectArrayElement(res, i, robj);

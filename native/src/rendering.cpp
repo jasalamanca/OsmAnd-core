@@ -200,7 +200,7 @@ int updatePaint(RenderingRuleSearchRequest const * req, SkPaint & paint, int ind
     // do not check shadow color here
     if (rc.getShadowRenderingMode() == 1 && ind == 0)
     {
-        int shadowColor = req->getIntPropertyValue(req->props()->R_SHADOW_COLOR);
+        SkColor shadowColor = req->getIntPropertyValue(req->props()->R_SHADOW_COLOR);
         int shadowLayer = getDensityValue(rc, req, req->props()->R_SHADOW_RADIUS);
         if (shadowColor == 0) {
 			shadowColor = rc.getShadowRenderingColor();
@@ -257,7 +257,7 @@ void renderText(MapDataObject* obj, RenderingRuleSearchRequest* req, RenderingCo
 }
 
 void drawPolylineShadow(SkCanvas & cv, SkPaint & paint, RenderingContext const & rc, SkPath const & path,
-		int shadowColor, int shadowRadius)
+		SkColor shadowColor, int shadowRadius)
 {
     // blurred shadows
     if (rc.getShadowRenderingMode() == 2 && shadowRadius > 0) {
@@ -430,10 +430,10 @@ void drawPolyline(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas
 				intersect = true;
 			} else {
 				uint cross = 0;
-				cross |= (rc->calcX < 0 ? 1 : 0);
-				cross |= (rc->calcX > rc->getWidth() ? 2 : 0);
-				cross |= (rc->calcY < 0 ? 4 : 0);
-				cross |= (rc->calcY > rc->getHeight() ? 8 : 0);
+				cross |= (rc.calcX < 0 ? 1 : 0);
+				cross |= (rc.calcX > rc.getWidth() ? 2 : 0);
+				cross |= (rc.calcY < 0 ? 4 : 0);
+				cross |= (rc.calcY > rc.getHeight() ? 8 : 0);
 				if(i > 0) {
 					if((prevCross & cross) == 0) {
 						intersect = true;
@@ -709,41 +709,41 @@ bool iconOrder(IconDrawInfo const & text1, IconDrawInfo const & text2) {
 
 void drawIconsOverCanvas(RenderingContext & rc, SkCanvas & canvas)
 {
-	std::sort(rc->iconsToDraw.begin(), rc->iconsToDraw.end(), iconOrder);
-	SkRect bounds = SkRect::MakeLTRB(0, 0, rc->getWidth(), rc->getHeight());
+	std::sort(rc.iconsToDraw.begin(), rc.iconsToDraw.end(), iconOrder);
+	SkRect bounds = SkRect::MakeLTRB(0, 0, rc.getWidth(), rc.getHeight());
 	bounds.inset(-bounds.width()/4, -bounds.height()/4);
 	quad_tree<SkRect> boundsIntersect(bounds, 4, 0.6);
 	size_t ji = 0;
 	SkPaint p;
 	p.setStyle(SkPaint::kStroke_Style);
 	p.setFilterBitmap(true);
-	vector<SkRect> searchText;
-	for(;ji< rc->iconsToDraw.size(); ji++)
+	std::vector<SkRect> searchText;
+	for(;ji< rc.iconsToDraw.size(); ji++)
 	{
-		IconDrawInfo icon = rc->iconsToDraw.at(ji);
-		if (icon.y >= 0 && icon.y < rc->getHeight() && icon.x >= 0 && icon.x < rc->getWidth() && icon.bmp != NULL) {
+		IconDrawInfo icon = rc.iconsToDraw[ji];
+		if (icon.y >= 0 && icon.y < rc.getHeight() && icon.x >= 0 && icon.x < rc.getWidth() && icon.bmp != NULL) {
 			SkBitmap* ico = icon.bmp;
-			float left = icon.x -  ico->width() / 2 * rc->getScreenDensityRatio();
-			float top = icon.y - ico->height() / 2 * rc->getScreenDensityRatio(); 
-			SkRect r = SkRect::MakeXYWH(left, top, ico->width() * rc->getScreenDensityRatio(),
-						ico->height()* rc->getScreenDensityRatio() );
+			float left = icon.x -  ico->width() / 2 * rc.getScreenDensityRatio();
+			float top = icon.y - ico->height() / 2 * rc.getScreenDensityRatio(); 
+			SkRect r = SkRect::MakeXYWH(left, top, ico->width() * rc.getScreenDensityRatio(),
+						ico->height()* rc.getScreenDensityRatio() );
 			
 			boundsIntersect.query_in_box(r, searchText);
 			bool intersects = false;
 			for (uint32_t i = 0; i < searchText.size(); i++) {
-				SkRect& t = searchText.at(i);
+				SkRect& t = searchText[i];
 				if (SkRect::Intersects(t, r)) {
 					intersects =  true;
 					break;
 				}
 			}
 			if (!intersects) {
-				PROFILE_NATIVE_OPERATION(rc, canvas->drawBitmapRect(*ico, (SkIRect*) NULL, r, &p));
+				PROFILE_NATIVE_OPERATION(rc, canvas.drawBitmapRect(*ico, (SkIRect*) NULL, r, &p));
 				r.inset(-r.width()/4, -r.height()/4);
 				boundsIntersect.insert(r, r);
 			}
 		}
-		if (rc->interrupted()) {
+		if (rc.interrupted()) {
 			break;
 		}
 	}

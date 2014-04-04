@@ -113,7 +113,7 @@ public :
 
 	std::vector<TextDrawInfo*> textToDraw;
 	std::vector<IconDrawInfo> iconsToDraw;
-	
+
 	// not expect any shadow
 	int shadowLevelMin;
 	int shadowLevelMax;
@@ -371,6 +371,6 @@ private:
     }
 };
 
-int findFirstNumberEndIndex(string value); 
+int findFirstNumberEndIndex(std::string const & value);
 
 #endif /*_OSMAND_COMMON_H*/

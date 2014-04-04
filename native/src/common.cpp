@@ -257,7 +257,7 @@ double getDistance(double lat1, double lon1, double lat2, double lon2) {
 	return R * c * 1000;
 }
 
-int findFirstNumberEndIndex(string value) {
+int findFirstNumberEndIndex(std::string const & value) {
 	uint i = 0;
 	bool valid = false;
 	if (value.length() > 0 && value[0] == '-') {

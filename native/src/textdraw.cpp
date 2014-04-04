@@ -334,12 +334,10 @@ bool intersects(SkRect tRect, float tRot, TextDrawInfo* s)
 bool intersects(TextDrawInfo* t, TextDrawInfo* s) {
 	return intersects(t->bounds, t->pathRotate, s);
 }
-///vector<TextDrawInfo*> searchText;
 
 // Only called from renderImage on MapCreator
 bool findTextIntersection(SkCanvas & cv, RenderingContext & rc, quad_tree<TextDrawInfo*>& boundIntersections, TextDrawInfo* text,
 		SkPaint* paintText, SkPaint* paintIcon) {
-	vector<TextDrawInfo*> searchText;
 	paintText->measureText(text->text.c_str(), text->text.length(), &text->bounds);
 	// make wider
 	text->bounds.inset(-rc.getDensityValue(3), -rc.getDensityValue(10));

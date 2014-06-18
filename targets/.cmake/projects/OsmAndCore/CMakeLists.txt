@@ -18,6 +18,7 @@ include_directories(AFTER SYSTEM
 	"${OSMAND_ROOT}/externals/jpeg/upstream.patched"
 	"${OSMAND_ROOT}/externals/libpng/upstream.patched"
 	"${OSMAND_ROOT}/externals/protobuf/upstream.patched/src"
+	"${OSMAND_ROOT}/externals/boost-android/upstream.patched"
 	"${OSMAND_ROOT}/native/include"
 	"${OSMAND_ROOT}/native/src"
 	"$ENV{JAVA_HOME}/include"

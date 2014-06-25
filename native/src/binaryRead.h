@@ -19,6 +19,14 @@
 #include "mapObjects.h"
 #include "renderRules.h"
 
+////
+class RoutingIndex;
+class RouteSubregion;
+class RouteDataObject;
+
+
+
+
 static const uint MAP_VERSION = 2;
 
 
@@ -36,22 +44,6 @@ struct MapTreeBounds {
 		ocean = -1;
 	}
 };
-struct RoutingIndex;
-struct RouteSubregion {
-	uint32_t length;
-	uint32_t filePointer;
-	uint32_t mapDataBlock;
-	uint32_t left;
-	uint32_t right;
-	uint32_t top;
-	uint32_t bottom;
-	std::vector<RouteSubregion> subregions;
-	RoutingIndex* routingIndex;
-
-	RouteSubregion(RoutingIndex* ind) : length(0), filePointer(0), mapDataBlock(0), routingIndex(ind){
-	}
-};
-
 
 struct MapRoot: MapTreeBounds {
 	uint minZoom ;
@@ -74,164 +66,6 @@ struct BinaryPartIndex {
 	std::string name;
 
 	BinaryPartIndex(PART_INDEXES tp) : type(tp) {}
-};
-
-struct RoutingIndex : BinaryPartIndex {
-	std::vector<tag_value> decodingRules;
-	std::vector<RouteSubregion> subregions;
-	std::vector<RouteSubregion> basesubregions;
-	RoutingIndex() : BinaryPartIndex(ROUTING_INDEX) {
-	}
-
-	void initRouteEncodingRule(uint32_t id, std::string const & tag, std::string const & val) {
-		tag_value pair = tag_value(tag, val);
-		while(decodingRules.size() < id + 1){
-			decodingRules.push_back(pair);
-		}
-		decodingRules[id] = pair;
-	}
-};
-
-struct RouteDataObject {
-	RoutingIndex* region;
-	std::vector<uint32_t> types ;
-	std::vector<uint32_t> pointsX ;
-	std::vector<uint32_t> pointsY ;
-	std::vector<uint64_t> restrictions ;
-	std::vector<std::vector<uint32_t> > pointTypes;
-	int64_t id;
-
-	UNORDERED(map)<int, std::string > names;
-	std::vector<std::pair<uint32_t, uint32_t> > namesIds;
-
-	std::string getName() {
-		if(names.size() > 0) {
-			return names.begin()->second;
-		}
-		return "";
-	}
-
-	inline int64_t getId() {
-		return id;
-	}
-
-	int getSize() {
-		int s = sizeof(this);
-		s += pointsX.capacity()*sizeof(uint32_t);
-		s += pointsY.capacity()*sizeof(uint32_t);
-		s += types.capacity()*sizeof(uint32_t);
-		s += restrictions.capacity()*sizeof(uint64_t);
-		std::vector<std::vector<uint32_t> >::iterator t = pointTypes.begin();
-		for(;t!=pointTypes.end(); t++) {
-			s+= (*t).capacity() * sizeof(uint32_t);
-		}
-		s += namesIds.capacity()*sizeof(std::pair<uint32_t, uint32_t>);
-		s += names.size()*sizeof(std::pair<int, std::string>)*10;
-		return s;
-	}
-
-	inline int getPointsLength() {
-		return pointsX.size();
-	}
-
-	bool loop(){
-		return pointsX[0] == pointsX[pointsX.size() - 1] && pointsY[0] == pointsY[pointsY.size() - 1] ; 
-	}
-
-	bool roundabout(){
-		uint sz = types.size();
-		for(uint i=0; i < sz; i++) {
-			tag_value r = region->decodingRules[types[i]];
-			if(r.first == "roundabout" || r.second == "roundabout") {
-				return true;
-			} else if(r.first == "oneway" && r.second != "no" && loop()) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	double directionRoute(int startPoint, bool plus) const {
-		// look at comment JAVA
-		return directionRoute(startPoint, plus, 5);
-	}
-
-	// Gives route direction of EAST degrees from NORTH ]-PI, PI]
-	double directionRoute(size_t startPoint, bool plus, float dist) const {
-		int x = pointsX[startPoint];
-		int y = pointsY[startPoint];
-		size_t nx = startPoint;
-		int px = x;
-		int py = y;
-		double total = 0;
-		do {
-			if (plus) {
-				if (++nx >= pointsX.size()) {
-					break;
-				}
-			} else {
-				if (--nx < 0) {
-					break;
-				}
-			}
-			px = pointsX[nx];
-			py = pointsY[nx];
-			// translate into meters
-			// TODO review distance criteria
-			total += abs(px - x) * 0.011 + abs(py - y) * 0.01863;
-		} while (total < dist);
-
-        if ((x == px) && (y == py))
-        {
-                // Calculate bearing reverse way and adjust.
-                return alignAngleDifference(directionRoute(startPoint, !plus, dist) - M_PI);
-        }
-		return -atan2(x - px, y - py);
-	}
-
-	static double parseSpeed(std::string const & v, double def) {
-		if(v == "none") {
-			return 40;// RouteDataObject::NONE_MAX_SPEED;
-		} else {
-			int i = findFirstNumberEndIndex(v);
-			if (i > 0) {
-				double f = atof(v.substr(0, i).c_str());
-				f /= 3.6; // km/h -> m/s
-				if (v.find("mph") != std::string::npos) {
-					f *= 1.6;
-				}
-				return f;
-			}
-		}
-		return def;
-	}
-
-	static double parseLength(std::string const & v, double def) {
-		// 14"10' not supported
-		int i = findFirstNumberEndIndex(v);
-		if (i > 0) {
-			double f = atof(v.substr(0, i).c_str());
-			if (v.find("\"") != std::string::npos  || v.find("ft") != std::string::npos) {
-				// foot to meters
-				f *= 0.3048;
-			}
-			return f;
-		}
-		return def;
-	}
-
-	static double parseWeightInTon(std::string const & v, double def) {
-		int i = findFirstNumberEndIndex(v);
-		if (i > 0) {
-			double f = atof(v.substr(0, i).c_str());
-			if (v.find("\"") != std::string::npos || v.find("lbs") != std::string::npos) {
-				// lbs -> kg -> ton
-				f = (f * 0.4535) / 1000.0;
-			}
-			return f;
-		}
-		return def;
-	}
 };
 
 struct MapIndex : BinaryPartIndex {
@@ -299,7 +133,7 @@ struct BinaryMapFile {
 	uint64_t dateCreated;
 	std::vector<MapIndex> mapIndexes;
 	std::vector<RoutingIndex*> routingIndexes;
-	std::vector<BinaryPartIndex*> indexes;
+////	std::vector<BinaryPartIndex*> indexes;
 	int fd;
 	int routefd;
 	bool basemap;

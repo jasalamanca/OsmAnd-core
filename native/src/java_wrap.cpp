@@ -1038,6 +1038,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 	sub.top = ienv->GetIntField(subreg, jfield_RouteSubregion_top);
 	sub.bottom = ienv->GetIntField(subreg, jfield_RouteSubregion_bottom);
 	sub.mapDataBlock= ienv->GetIntField(subreg, jfield_RouteSubregion_shiftToData);
+sub.Box(bbox_t(point_t(sub.left, sub.top), point_t(sub.right, sub.bottom)));////
 	std::vector<RouteDataObject*> result;
 	SearchQuery q;
 	searchRouteDataForSubRegion(&q, result, &sub);

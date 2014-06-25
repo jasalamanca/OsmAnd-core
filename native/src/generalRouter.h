@@ -6,7 +6,8 @@
 #include <algorithm>
 #include "boost/dynamic_bitset.hpp"
 #include "Logging.h"
-#include "binaryRead.h"
+//#include "binaryRead.h"
+#include "RoutingIndex.hpp"
 
 struct RouteSegment;
 class GeneralRouter;

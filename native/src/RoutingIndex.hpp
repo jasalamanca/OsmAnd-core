@@ -153,8 +153,10 @@ struct RoutingIndex : BinaryPartIndex
 	typedef std::vector<RouteSubregion> regions_t;
 	regions_t subregions;
 	regions_t basesubregions;
-	RoutingIndex() : BinaryPartIndex(ROUTING_INDEX), box(point_t((2^31)-1, (2^31)-1), point_t(-(2^31), -(2^31))) {
-	}
+	RoutingIndex()
+	: BinaryPartIndex(ROUTING_INDEX),
+	  box(point_t(INT_MAX, INT_MAX), point_t(-1, -1))
+	{}
 
 	// TODO What really is basemap????
 	void query(bbox_t const & b, bool base, RouteDataObjects_t & result) const

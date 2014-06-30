@@ -335,16 +335,19 @@ public:
 		timeToLoad.Start();
 		int z  = config.zoomToLoad;
 		int tz = 31 - z;
-		int64_t tileId = (xloc << z) + yloc;
+		////int64_t tileId = (xloc << z) + yloc;
+		int64_t tileId = (xloc << 31) + yloc;
 		if (indexedSubregions.count(tileId) == 0) {
-			SearchQuery q((uint32_t) (xloc << tz),
-							(uint32_t) ((xloc + 1) << tz), (uint32_t) (yloc << tz), (uint32_t) ((yloc + 1) << tz));
+//			SearchQuery q((uint32_t) (xloc << tz),
+//							(uint32_t) ((xloc + 1) << tz), (uint32_t) (yloc << tz), (uint32_t) ((yloc + 1) << tz));
+			SearchQuery q(xloc, xloc, yloc, yloc);
 			std::vector<RouteSubregion> tempResult;
 			searchRouteSubregions(&q, tempResult, basemap);
 			std::vector<SHARED_PTR<RoutingSubregionTile> > collection;
 			for(size_t i=0; i<tempResult.size(); i++) {
 				RouteSubregion& rs = tempResult[i];
-				int64_t key = ((int64_t)rs.left << 31)+ rs.filePointer;
+				//int64_t key = ((int64_t)rs.left << 31)+ rs.filePointer;// Now unsafe
+				int64_t key = ((int64_t)xloc << 31)+ yloc; // Now duplicated
 				if(subregionTiles.find(key) == subregionTiles.end()) {
 					subregionTiles[key] = SHARED_PTR<RoutingSubregionTile>(new RoutingSubregionTile(rs));
 				}
@@ -372,6 +375,7 @@ public:
 		}
 
 		// Second search on map info.
+		/***
 		int t = config.zoomToLoad - zoomAround;
 		int coordinatesShift = (1 << (31 - config.zoomToLoad));
 		if(t <= 0) {
@@ -386,8 +390,11 @@ public:
 				uint32_t xloc = (x31 + i*coordinatesShift) >> (31 - z);
 				uint32_t yloc = (y31+j*coordinatesShift) >> (31 - z);
 				int64_t tileId = (xloc << z) + yloc;
-				loadHeaders(xloc, yloc);
+				loadHeaders(xloc, yloc); ***/
+		loadHeaders(x31, y31);
+		int64_t tileId = (x31 << 31) + y31;
 				std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
+std::cerr << "loadTD NAT #subReg " << subregions.size() << std::endl;
 				for(size_t j = 0; j<subregions.size(); j++) {
 					if(subregions[j]->isLoaded()) {
 						UNORDERED(map)<int64_t, SHARED_PTR<RouteSegment> >::const_iterator s = subregions[j]->routes.begin();
@@ -404,8 +411,10 @@ public:
 						}
 					}
 				}
-			}
+/****			}
 		}
+		****/
+std::cerr << "loadTD NAT #RDO " << dataObjects.size() << std::endl;
 	}
 
 	SHARED_PTR<RouteSegment> loadRouteSegment(uint32_t x31, uint32_t y31) {
@@ -434,9 +443,11 @@ public:
 		int z = config.zoomToLoad;
 		int64_t xloc = x31 >> (31 - z);
 		int64_t yloc = y31 >> (31 - z);
-		int64_t tileId = (xloc << z) + yloc;
+		//int64_t tileId = (xloc << z) + yloc;
 		uint64_t l = (((uint64_t) x31) << 31) + (uint64_t) y31;
-		loadHeaders(xloc, yloc);
+		////loadHeaders(xloc, yloc);
+		int64_t tileId = l;
+		loadHeaders(x31, y31);
 		std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
 		for(size_t j = 0; j<subregions.size(); j++) {
 			if(subregions[j]->isLoaded()) {

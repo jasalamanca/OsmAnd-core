@@ -16,7 +16,7 @@ using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::FileInputStream;
 using google::protobuf::internal::WireFormatLite;
 
-#define INT_MAXIMUM 0x7fffffff
+////#define INT_MAXIMUM 0x7fffffff
 
 // QUITAR
 inline bool readInt(CodedInputStream* input, uint32_t* sz ){
@@ -109,6 +109,11 @@ inline bool readUInt32(CodedInputStream & input, uint32_t & output)
 inline bool readUInt64(CodedInputStream & input, uint64_t & output)
 {
 	return WireFormatLite::ReadPrimitive<uint64_t, WireFormatLite::TYPE_UINT64>(&input, &output);
+}
+
+inline bool readBool(CodedInputStream & input, bool & output)
+{
+	return WireFormatLite::ReadPrimitive<bool, WireFormatLite::TYPE_BOOL>(&input, &output);
 }
 
 enum LengthCodification

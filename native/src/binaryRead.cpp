@@ -1,4 +1,5 @@
 #include "RoutingIndex.hpp"
+#include "MapIndex.hpp"
 #include "binaryRead.h"
 #include "multipolygons.h"
 
@@ -12,6 +13,7 @@
 #include <boost/range/numeric.hpp>
 #include <boost/geometry/algorithms/expand.hpp>
 
+////#include <cstdint>
 #include "Logging.h"
 
 //#include "cassert"
@@ -31,650 +33,39 @@ static uint detailedZoomStart = 13;
 static uint zoomOnlyForBasemaps  = 11;
 std::map< std::string, BinaryMapFile* > openFiles;
 OsmAndStoredIndex* cache = NULL;
-typedef UNORDERED(set)<long long> IDS_SET;
 
-//void searchRouteRegion(CodedInputStream* input, SearchQuery const * q, RoutingIndex* ind, std::vector<RouteSubregion> & subregions,
-//		std::vector<RouteSubregion>& toLoad);
-//bool readRouteTreeData(CodedInputStream* input, RouteSubregion const * s, std::vector<RouteDataObject*>& dataObjects,
-//		RoutingIndex* routingIndex);
+bool readMapIndex(CodedInputStream & input, MapIndex & output,
+		int fd);
+bool readRoutingIndex(CodedInputStream & input, RoutingIndex & output,
+		int fd);
 
-////bool sortRouteRegions (const RouteSubregion& i,const RouteSubregion& j) { return (i.mapDataBlock<j.mapDataBlock); }
-//bool readRouteTree(CodedInputStream* input, RouteSubregion* thisTree, RouteSubregion const * parentTree,
-//		RoutingIndex * ind, int /*depth*/, bool /*readCoordinates*/);
-//void readRouteMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<RouteSubregion>& found,
-//		RoutingIndex* routeIndex, std::vector<MapDataObject*>& tempResult, bool skipDuplicates,
-//		IDS_SET& ids, int& renderedState);
-//bool readRoutingIndex(CodedInputStream* input, RoutingIndex* routingIndex, bool readOnlyRules);
-bool readRoutingIndex(CodedInputStream & input, RoutingIndex & output, int fd);
-
-bool readMapTreeBounds(CodedInputStream* input, MapTreeBounds* tree, MapRoot const * root) {
-	int tag;
-	int32_t si;
-	while ((tag = input->ReadTag()) != 0) {
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		case OsmAndMapIndex_MapDataBox::kLeftFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			tree->left = si + root->left;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kRightFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			tree->right = si + root->right;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kTopFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			tree->top = si + root->top;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kBottomFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			tree->bottom = si + root->bottom;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kOceanFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<bool, WireFormatLite::TYPE_BOOL>(input, &tree->ocean)));
-			break;
-		}
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return true;
-			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
-		}
-	}
-	return true;
-}
-
-bool readMapLevel(CodedInputStream* input, MapRoot* root, bool initSubtrees) {
-	int tag;
-	int si;
-	while ((tag = input->ReadTag()) != 0) {
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		case OsmAndMapIndex_MapRootLevel::kMaxZoomFieldNumber: {
-			int z;
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &z)));
-			root->maxZoom = z;
-			break;
-		}
-		case OsmAndMapIndex_MapRootLevel::kMinZoomFieldNumber: {
-			int z;
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &z)));
-			root->minZoom = z;
-			break;
-		}
-		case OsmAndMapIndex_MapRootLevel::kBottomFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &si)));
-			root->bottom = si;
-			break;
-		}
-		case OsmAndMapIndex_MapRootLevel::kTopFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &si)));
-			root->top = si;
-			break;
-		}
-		case OsmAndMapIndex_MapRootLevel::kLeftFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &si)));
-			root->left = si;
-			break;
-		}
-		case OsmAndMapIndex_MapRootLevel::kRightFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &si)));
-			root->right = si;
-			break;
-		}
-		case OsmAndMapIndex_MapRootLevel::kBoxesFieldNumber: {
-			if (!initSubtrees) {
-				input->Skip(input->BytesUntilLimit());
-				break;
-			}
-			MapTreeBounds bounds;
-			readInt(input, &bounds.length);
-			bounds.filePointer = input->TotalBytesRead();
-			int oldLimit = input->PushLimit(bounds.length);
-			readMapTreeBounds(input, &bounds, root);
-			root->bounds.push_back(bounds);
-			input->PopLimit(oldLimit);
-			break;
-		}
-
-		case OsmAndMapIndex_MapRootLevel::kBlocksFieldNumber: {
-			input->Skip(input->BytesUntilLimit());
-			break;
-		}
-
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return true;
-			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
-		}
-	}
-	return true;
-}
-
-bool readMapEncodingRule(CodedInputStream* input, MapIndex* index, uint32_t id) {
-	int tag;
-	std::string tagS;
-	std::string value;
-	uint32_t type = 0;
-	while ((tag = input->ReadTag()) != 0) {
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		case OsmAndMapIndex_MapEncodingRule::kValueFieldNumber: {
-			DO_((WireFormatLite::ReadString(input, &value)));
-			break;
-		}
-		case OsmAndMapIndex_MapEncodingRule::kTagFieldNumber: {
-			DO_((WireFormatLite::ReadString(input, &tagS)));
-			break;
-		}
-		case OsmAndMapIndex_MapEncodingRule::kTypeFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &type)));
-			break;
-		}
-		case OsmAndMapIndex_MapEncodingRule::kIdFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &id)));
-			break;
-		}
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return true;
-			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
-		}
-	}
-	// Special case for check to not replace primary with primary_link
-	index->initMapEncodingRule(type, id, tagS, value);
-	return true;
-}
-
-bool readMapIndex(CodedInputStream* input, MapIndex* mapIndex, bool onlyInitEncodingRules) {
-	uint32_t tag;
-	uint32_t defaultId = 1;
-	while ((tag = input->ReadTag()) != 0) {
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		case OsmAndMapIndex::kNameFieldNumber: {
-			DO_((WireFormatLite::ReadString(input, &mapIndex->name)));
-			break;
-		}
-		case OsmAndMapIndex::kRulesFieldNumber: {
-			if(onlyInitEncodingRules) {
-				int len = 0;
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &len);
-				int oldLimit = input->PushLimit(len);
-				readMapEncodingRule(input, mapIndex, defaultId++);
-				input->PopLimit(oldLimit);
-			} else {
-				skipUnknownFields(input, tag);
-			}
-			break;
-		}
-		case OsmAndMapIndex::kLevelsFieldNumber: {
-			MapRoot mapLevel;
-			readInt(input, &mapLevel.length);
-			mapLevel.filePointer = input->TotalBytesRead();
-			if (!onlyInitEncodingRules) {
-				int oldLimit = input->PushLimit(mapLevel.length);
-				readMapLevel(input, &mapLevel, false);
-				input->PopLimit(oldLimit);
-				mapIndex->levels.push_back(mapLevel);
-			}
-			input->Seek(mapLevel.filePointer + mapLevel.length);
-			break;
-		}
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return true;
-			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
-		}
-	}
-	if(onlyInitEncodingRules) {
-		mapIndex->finishInitializingTags();
-	}
-	return true;
-}
-
-bool initMapStructure(CodedInputStream & input, BinaryMapFile & file)
+typedef std::vector<std::string> StringTable_t;
+bool readStringTable(CodedInputStream & input, StringTable_t & list)
 {
+	LDMessage<> inputManager(input);
 	uint32_t tag;
-	uint32_t versionConfirm = -2;
 	while ((tag = input.ReadTag()) != 0)
 	{
 		switch (WireFormatLite::GetTagFieldNumber(tag))
 		{
-		// required uint32_t version = 1;
-		case OsmAndStructure::kVersionFieldNumber:
-			readUInt32(input, file.version);
-			break;
-		case OsmAndStructure::kDateCreatedFieldNumber:
-			readUInt64(input, file.dateCreated);
-			break;
-		case OsmAndStructure::kMapIndexFieldNumber:
+		case StringTable::kSFieldNumber:
 		{
-			MapIndex mapIndex;
-			readInt(input, mapIndex.length);
-			mapIndex.filePointer = input.TotalBytesRead();
-			int oldLimit = input.PushLimit(mapIndex.length);
-			readMapIndex(&input, &mapIndex, false);
-			input.PopLimit(oldLimit);
-			input.Seek(mapIndex.filePointer + mapIndex.length);///
-			file.mapIndexes.push_back(mapIndex);
-////			file->indexes.push_back(&file->mapIndexes.back());
-			file.basemap = file.basemap || mapIndex.name.find("basemap") != std::string::npos;
-			break;
-		}
-		case OsmAndStructure::kRoutingIndexFieldNumber:
-		{
-			RoutingIndex* routingIndex = new RoutingIndex;
-			readRoutingIndex(input, *routingIndex, file.fd);
-////			input->Seek(routingIndex->filePointer + routingIndex->length);///
-			file.routingIndexes.push_back(routingIndex);
-////			file->indexes.push_back(file->routingIndexes.back());
-			break;
-		}
-		case OsmAndStructure::kVersionConfirmFieldNumber:
-			readUInt32(input, versionConfirm);
-			break;
-		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return true;
-////			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
-	}  // end of while
-	if (file.version != versionConfirm) {
-		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Corrupted file. It should be ended as it starts with version %d %d", file.version, versionConfirm);
-		return false;
-	}
-	if (file.version != MAP_VERSION) {
-		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Version of the file is not supported.");
-		return false;
-	}
-	return true;
-}
-
-// QUITAR
-bool readStringTable(CodedInputStream* input, std::vector<std::string>& list) {
-	uint32_t tag;
-	while ((tag = input->ReadTag()) != 0) {
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		case StringTable::kSFieldNumber: {
 			std::string s;
-			WireFormatLite::ReadString(input, &s);
-			list.push_back(s);
+			WireFormatLite::ReadString(&input, &s);
+			list.push_back(std::move(s));
 			break;
 		}
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return false;
-			}
+		default:
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
 			break;
-		}
-		}
-	}
-	return true;
-}
-
-static const int SHIFT_COORDINATES = 5;
-static const int MASK_TO_READ = ~((1 << SHIFT_COORDINATES) - 1);
-
-// Only called from renderImage on MapCreator
-bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types, MapIndex const * root) {
-	RenderingRuleSearchRequest* r = req->req;
-	for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++) {
-		for (int i = 1; i <= 3; i++) {
-			r->setIntFilter(r->props()->R_MINZOOM, req->zoom);
-			r->setStringFilter(r->props()->R_TAG, type->first);
-			r->setStringFilter(r->props()->R_VALUE, type->second);
-			if (r->search(i, false)) {
-				return true;
-			}
-		}
-		r->setStringFilter(r->props()->R_TAG, type->first);
-		r->setStringFilter(r->props()->R_VALUE, type->second);
-		r->setStringFilter(r->props()->R_NAME_TAG, "");
-		if (r->search(RenderingRulesStorage::TEXT_RULES, false)) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-// Only called from renderImage on MapCreator
-MapDataObject* readMapDataObject(CodedInputStream* input, MapTreeBounds const * tree, SearchQuery* req,
-			MapIndex const * root) {
-	uint32_t tag = WireFormatLite::GetTagFieldNumber(input->ReadTag());
-	bool area = MapData::kAreaCoordinatesFieldNumber == tag;
-	if(!area && MapData::kCoordinatesFieldNumber != tag) {
-		return NULL;
-	}
-
-	MapDataObject* dataObject = new MapDataObject();
-	dataObject->area = area;
-	coordinates & coor = dataObject->points;
-	uint32_t size;
-	input->ReadVarint32(&size);
-	int old = input->PushLimit(size);
-	int px = tree->left & MASK_TO_READ;
-	int py = tree->top & MASK_TO_READ;
-	bool contains = false;
-	int minX = INT_MAXIMUM;
-	int maxX = 0;
-	int minY = INT_MAXIMUM;
-	int maxY = 0;
-	req->numberOfVisitedObjects++;
-	int x;
-	int y;
-	while (input->BytesUntilLimit() > 0) {
-		if (!WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &x)) {
-			return NULL;
-		}
-		if (!WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &y)) {
-			return NULL;
-		}
-		x = (x << SHIFT_COORDINATES) + px;
-		y = (y << SHIFT_COORDINATES) + py;
-		coor.push_back(std::pair<int, int>(x, y));
-		px = x;
-		py = y;
-		if (!contains && req->left <= x && req->right >= x && req->top <= y && req->bottom >= y) {
-			contains = true;
-		}
-		if (!contains) {
-			minX = std::min(minX, x);
-			maxX = std::max(maxX, x);
-			minY = std::min(minY, y);
-			maxY = std::max(maxY, y);
-		}
-	}
-	if (!contains) {
-		if (maxX >= req->left && minX <= req->right && minY <= req->bottom && maxY >= req->top) {
-			contains = true;
-		}
-	}
-	input->PopLimit(old);
-	if (!contains) {
-		return NULL;
-	}
-
-	// READ types
-	std::vector< coordinates > & innercoordinates = dataObject->polygonInnerCoordinates;
-	std::vector< tag_value > & additionalTypes = dataObject->additionalTypes;
-	std::vector< tag_value > & types = dataObject->types;
-	UNORDERED(map)< std::string, unsigned int> & stringIds = dataObject->stringIds;
-	int64_t id = 0;
-	bool loop = true;
-	while (loop) {
-		uint32_t t = input->ReadTag();
-		switch (WireFormatLite::GetTagFieldNumber(t)) {
-		case 0:
-			loop = false;
-			break;
-		case MapData::kPolygonInnerCoordinatesFieldNumber: {
-			coordinates polygon;
-
-			px = tree->left & MASK_TO_READ;
-			py = tree->top & MASK_TO_READ;
-			input->ReadVarint32(&size);
-			old = input->PushLimit(size);
-			while (input->BytesUntilLimit() > 0) {
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &x);
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &y);
-				x = (x << SHIFT_COORDINATES) + px;
-				y = (y << SHIFT_COORDINATES) + py;
-				polygon.push_back(std::pair<int, int>(x, y));
-				px = x;
-				py = y;
-			}
-			input->PopLimit(old);
-			innercoordinates.push_back(polygon);
-			break;
-		}
-		case MapData::kAdditionalTypesFieldNumber: {
-			input->ReadVarint32(&size);
-			old = input->PushLimit(size);
-			while (input->BytesUntilLimit() > 0) {
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &x);
-				UNORDERED(map)<int, tag_value>::const_iterator dR = root->decodingRules.find(x);
-				if (dR != root->decodingRules.end()) {
-					tag_value const & t = dR->second;
-					additionalTypes.push_back(t);
-				}
-			}
-			input->PopLimit(old);
-			break;
-		}
-		case MapData::kTypesFieldNumber: {
-			input->ReadVarint32(&size);
-			old = input->PushLimit(size);
-			while (input->BytesUntilLimit() > 0) {
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &x);
-				UNORDERED(map)<int, tag_value>::const_iterator dR = root->decodingRules.find(x);
-				if (dR != root->decodingRules.end()) {
-					tag_value const & t = dR->second;
-					types.push_back(t);
-				}
-			}
-			input->PopLimit(old);
-			bool acceptTps = acceptTypes(req, types, root);	
-			if (!acceptTps) {
-				return NULL;
-			}
-			break;
-		}
-		case MapData::kIdFieldNumber:
-			WireFormatLite::ReadPrimitive<int64_t, WireFormatLite::TYPE_SINT64>(input, &id);
-			dataObject->id = id;
-			break;
-		case MapData::kStringNamesFieldNumber:
-			input->ReadVarint32(&size);
-			old = input->PushLimit(size);
-			while (input->BytesUntilLimit() > 0) {
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &x);
-				WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_INT32>(input, &y);
-				UNORDERED(map)<int, tag_value>::const_iterator dR = root->decodingRules.find(x);
-				if (dR != root->decodingRules.end()) {
-					tag_value const & t = dR->second;
-					stringIds[t.first] = y;
-				}
-			}
-			input->PopLimit(old);
-			break;
-		default: {
-			if (WireFormatLite::GetTagWireType(t) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return NULL;
-			}
-			if (!skipUnknownFields(input, t)) {				
-				return NULL;
-			}
-			break;
-		}
-		}
-	}
-
-	req->numberOfAcceptedObjects++;
-
-	return dataObject;
-}
-
-// Only called from renderImage on MapCreator
-bool searchMapTreeBounds(CodedInputStream* input, MapTreeBounds* current, MapTreeBounds const * parent,
-		SearchQuery * req, std::vector<MapTreeBounds>* foundSubtrees) {
-	int init = 0;
-	int tag;
-	int si;
-	req->numberOfReadSubtrees++;
-	while ((tag = input->ReadTag()) != 0) {
-		if (req->publisher->isCancelled()) {
-			return false;
-		}
-		if (init == 0xf) {
-			init = 0;
-			// coordinates are init
-			if (current->right < req->left || current->left > req->right ||
-				current->top > req->bottom || current->bottom < req->top) {
-				return false;
-			} else {
-				req->numberOfAcceptedSubtrees++;
-			}
-		}
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		// required uint32_t version = 1;
-		case OsmAndMapIndex_MapDataBox::kLeftFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			current->left = si + parent->left;
-			init |= 1;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kRightFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			current->right = si + parent->right;
-			init |= 2;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kTopFieldNumber: {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			current->top = si + parent->top;
-			init |= 4;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kBottomFieldNumber : {
-			DO_((WireFormatLite::ReadPrimitive<int32_t, WireFormatLite::TYPE_SINT32>(input, &si)));
-			current->bottom = si +  parent->bottom;
-			init |= 8;
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kShiftToMapDataFieldNumber : {
-			readInt(input, &current->mapDataBlock);
-			current->mapDataBlock += current->filePointer;
-			foundSubtrees->push_back(*current);
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kOceanFieldNumber : {
-			DO_((WireFormatLite::ReadPrimitive<bool, WireFormatLite::TYPE_BOOL>(input, &current->ocean)));
-			if(current->ocean){
-				req->ocean = true;
-			} else {
-				req->mixed = true;
-			}
-			break;
-		}
-		case OsmAndMapIndex_MapDataBox::kBoxesFieldNumber: {
-			MapTreeBounds* child = new MapTreeBounds();
-			readInt(input, &child->length);
-			child->filePointer = input->TotalBytesRead();
-			int oldLimit = input->PushLimit(child->length);
-			if (current->ocean) {
-				child->ocean = current->ocean;
-			}
-			searchMapTreeBounds(input, child, current, req, foundSubtrees);
-			input->PopLimit(oldLimit);
-			input->Seek(child->filePointer + child->length);
-			delete child;
-			break;
-		}
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return true;
-			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
 		}
 	}
 	return true;
 }
 
 // Only called from renderImage on MapCreator
-bool readMapDataBlocks(CodedInputStream* input, SearchQuery * req, MapTreeBounds const * tree, MapIndex const * root) {
-	uint64_t baseId = 0;
-	int tag;
-	std::vector< MapDataObject* > results;
-	while ((tag = input->ReadTag()) != 0) {
-		if (req->publisher->isCancelled()) {
-			return false;
-		}
-		switch (WireFormatLite::GetTagFieldNumber(tag)) {
-		// required uint32_t version = 1;
-		case MapDataBlock::kBaseIdFieldNumber : {
-			WireFormatLite::ReadPrimitive<uint64_t, WireFormatLite::TYPE_UINT64>(input, &baseId);
-			break;
-		}
-		case MapDataBlock::kStringTableFieldNumber: {
-			uint32_t length;
-			DO_((WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &length)));
-			int oldLimit = input->PushLimit(length);
-			if(results.size() > 0) {
-				std::vector<std::string> stringTable;
-				readStringTable(input, stringTable);
-				for (std::vector<MapDataObject*>::const_iterator obj = results.begin(); obj != results.end(); obj++) {
-					if ((*obj)->stringIds.size() > 0) {
-						UNORDERED(map)<std::string, unsigned int >::const_iterator  val=(*obj)->stringIds.begin();
-						while(val != (*obj)->stringIds.end()){
-							(*obj)->objectNames[val->first]=stringTable[val->second];
-							val++;
-						}
-					}
-				}
-			}
-			input->Skip(input->BytesUntilLimit());
-			input->PopLimit(oldLimit);
-			break;
-		}
-		case MapDataBlock::kDataObjectsFieldNumber: {
-			uint32_t length;
-			DO_((WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &length)));
-			int oldLimit = input->PushLimit(length);
-			MapDataObject* mapObject = readMapDataObject(input, tree, req, root);
-			if (mapObject != NULL) {
-				mapObject->id += baseId;
-				req->publish(mapObject);
-				results.push_back(mapObject);
-			}
-			input->Skip(input->BytesUntilLimit());
-			input->PopLimit(oldLimit);
-			break;
-		}
-		default: {
-			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-				return true;
-			}
-			if (!skipUnknownFields(input, tag)) {
-				return false;
-			}
-			break;
-		}
-		}
-	}
-	return true;
-}
-
 bool checkObjectBounds(SearchQuery* q, MapDataObject* o) {
 	uint prevCross = 0;
 	for (uint i = 0; i < o->points.size(); i++) {
@@ -695,117 +86,13 @@ bool checkObjectBounds(SearchQuery* q, MapDataObject* o) {
 	return false;
 }
 
-
-bool sortTreeBounds (const MapTreeBounds& i,const MapTreeBounds& j) { return (i.mapDataBlock<j.mapDataBlock); }
-
-// Only called from renderImage on MapCreator
-void searchMapData(CodedInputStream* input, MapRoot* root, MapIndex const * ind, SearchQuery * req) {
-	// search
-	for (std::vector<MapTreeBounds>::iterator i = root->bounds.begin();
-			i != root->bounds.end(); i++) {
-		if (req->publisher->isCancelled()) {
-			return;
-		}
-		if (i->right < req->left || i->left > req->right ||
-				i->top > req->bottom || i->bottom < req->top) {
-			continue;
-		}
-		std::vector<MapTreeBounds> foundSubtrees;
-		input->Seek(i->filePointer);
-		int oldLimit = input->PushLimit(i->length);
-		searchMapTreeBounds(input, &(*i), root, req, &foundSubtrees);
-		input->PopLimit(oldLimit);
-
-		sort(foundSubtrees.begin(), foundSubtrees.end(), sortTreeBounds);
-		uint32_t length;
-		for (std::vector<MapTreeBounds>::const_iterator tree = foundSubtrees.begin();
-					tree != foundSubtrees.end(); tree++) {
-			if (req->publisher->isCancelled()) {
-				return;
-			}
-			input->Seek(tree->mapDataBlock);
-			WireFormatLite::ReadPrimitive<uint32_t, WireFormatLite::TYPE_UINT32>(input, &length);
-			int oldLimit = input->PushLimit(length);
-			readMapDataBlocks(input, req, &(*tree), ind);
-			input->PopLimit(oldLimit);
-		}
-	}
-}
-
-/****
-// Needed to read rules when files where initialized fron cache file.
-void checkAndInitRouteRegionRules(int fileInd, RoutingIndex* routingIndex){
-	// init decoding rules
-	if (routingIndex->decodingRules.size() == 0) {
-		lseek(fileInd, 0, SEEK_SET);
-		FileInputStream input(fileInd);
-		input.SetCloseOnDelete(false);
-		CodedInputStream cis(&input);
-		cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
-
-		cis.Seek(routingIndex->filePointer);
-		uint32_t old = cis.PushLimit(routingIndex->length);
-		readRoutingIndex(&cis, routingIndex, true);
-		cis.PopLimit(old);
-	}
-}
-****/
-
-// Only called from renderImage on MapCreator
-// Only called from renderImage on MapCreator
-void readMapObjects(SearchQuery * q, BinaryMapFile* file) {
-	for (std::vector<MapIndex>::iterator mapIndex = file->mapIndexes.begin(); mapIndex != file->mapIndexes.end();
-			mapIndex++) {
-		for (std::vector<MapRoot>::iterator mapLevel = mapIndex->levels.begin(); mapLevel != mapIndex->levels.end();
-				mapLevel++) {
-			if (q->publisher->isCancelled()) {
-				break;
-			}
-
-			if (mapLevel->minZoom <= q->zoom && mapLevel->maxZoom >= q->zoom) {
-				if (mapLevel->right >= q->left && q->right >= mapLevel->left &&
-						mapLevel->bottom >= q->top && q->bottom >= mapLevel->top) {
-					// OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "Search map %s", mapIndex->name.c_str());
-					// lazy initializing rules
-					if (mapIndex->decodingRules.size() == 0) {
-						lseek(file->fd, 0, SEEK_SET);
-						FileInputStream input(file->fd);
-						input.SetCloseOnDelete(false);
-						CodedInputStream cis(&input);
-						cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
-						cis.Seek(mapIndex->filePointer);
-						int oldLimit = cis.PushLimit(mapIndex->length);
-						readMapIndex(&cis, &(*mapIndex), true);
-						cis.PopLimit(oldLimit);
-					}
-					// lazy initializing subtrees
-					if (mapLevel->bounds.size() == 0) {
-						lseek(file->fd, 0, SEEK_SET);
-						FileInputStream input(file->fd);
-						input.SetCloseOnDelete(false);
-						CodedInputStream cis(&input);
-						cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
-						cis.Seek(mapLevel->filePointer);
-						int oldLimit = cis.PushLimit(mapLevel->length);
-						readMapLevel(&cis, &(*mapLevel), true);
-						cis.PopLimit(oldLimit);
-					}
-					lseek(file->fd, 0, SEEK_SET);
-					FileInputStream input(file->fd);
-					input.SetCloseOnDelete(false);
-					CodedInputStream cis(&input);
-					cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
-					searchMapData(&cis, &(*mapLevel), &(*mapIndex), q);
-				}
-			}
-		}
-	}
-}
+typedef UNORDERED(set)<long long> IDS_SET;
 
 // Only called from renderImage on MapCreator
 void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & basemapResult, std::vector<MapDataObject*>& tempResult,
 		std::vector<MapDataObject*>& coastLines, std::vector<MapDataObject*>& basemapCoastLines,
 		int& count, bool& basemapExists, int& renderRouteDataFile, bool skipDuplicates, int& renderedState) {
+	using boost::range::for_each;
 	if (skipDuplicates) {
 		// override it for now
 		// TODO skip duplicates doesn't work correctly with basemap ?
@@ -828,7 +115,8 @@ void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & b
 			continue;
 		} else if (!q->publisher->isCancelled()) {
 			bool basemap = i->second->isBasemap();
-			readMapObjects(q, file);
+			//readMapObjects(q, file);
+			for_each(file->mapIndexes, [&q](MapIndex const & index){ index.query(*q); });
 			std::vector<MapDataObject*>::const_iterator r = q->publisher->result.begin();
 			tempResult.reserve((size_t) (q->publisher->result.size() + tempResult.size()));
 
@@ -1125,6 +413,9 @@ void updatePointTypes(std::vector<std::vector<uint32_t> > & pointTypes, std::vec
 	}
 }
 ****/
+////////////////////////////////
+///// End MapIndex
+
 
 bool closeBinaryMapFile(std::string const & inputName) {
 	std::map<std::string, BinaryMapFile*>::iterator iterator;
@@ -1149,7 +440,7 @@ bool initMapFilesFromCache(std::string const & inputName) {
 	}
 	FileInputStream input(fileDescriptor);
 	CodedInputStream cis(&input);
-	cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
+	cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 	OsmAndStoredIndex* c = new OsmAndStoredIndex();
 	if(c->MergeFromCodedStream(&cis)){
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "Native Cache file initialized %s", inputName.c_str());
@@ -1169,6 +460,61 @@ bool hasEnding (std::string const &fullString, std::string const &ending)
     } else {
         return false;
     }
+}
+
+bool initMapStructure(CodedInputStream & input, BinaryMapFile & file)
+{
+	uint32_t tag;
+	uint32_t versionConfirm = -2;
+	while ((tag = input.ReadTag()) != 0)
+	{
+		switch (WireFormatLite::GetTagFieldNumber(tag))
+		{
+		// required uint32_t version = 1;
+		case OsmAndStructure::kVersionFieldNumber:
+			readUInt32(input, file.version);
+			break;
+		case OsmAndStructure::kDateCreatedFieldNumber:
+			readUInt64(input, file.dateCreated);
+			break;
+		case OsmAndStructure::kMapIndexFieldNumber:
+		{
+			MapIndex mapIndex;
+			readMapIndex(input, mapIndex, file.fd);//, false);
+////			input.Seek(mapIndex.filePointer + mapIndex.length);///
+			file.mapIndexes.push_back(std::move(mapIndex));
+////			file->indexes.push_back(&file->mapIndexes.back());
+			file.basemap = file.basemap || mapIndex.name.find("basemap") != std::string::npos;
+			break;
+		}
+		case OsmAndStructure::kRoutingIndexFieldNumber:
+		{
+			RoutingIndex* routingIndex = new RoutingIndex;
+			readRoutingIndex(input, *routingIndex, file.fd);
+////			input->Seek(routingIndex->filePointer + routingIndex->length);///
+			file.routingIndexes.push_back(routingIndex);
+////			file->indexes.push_back(file->routingIndexes.back());
+			break;
+		}
+		case OsmAndStructure::kVersionConfirmFieldNumber:
+			readUInt32(input, versionConfirm);
+			break;
+		default:
+			if (!skipUnknownFields(input, tag)) {
+				return false;
+			}
+			break;
+		}
+	}  // end of while
+	if (file.version != versionConfirm) {
+		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Corrupted file. It should be ended as it starts with version %d %d", file.version, versionConfirm);
+		return false;
+	}
+	if (file.version != MAP_VERSION) {
+		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Version of the file is not supported.");
+		return false;
+	}
+	return true;
 }
 
 BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
@@ -1260,7 +606,7 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 		FileInputStream input(fileDescriptor);
 		input.SetCloseOnDelete(false);
 		CodedInputStream cis(&input);
-		cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
+		cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 
 		if (!initMapStructure(cis, *mapFile)) {
 			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "File not initialised : %s", inputName.c_str());

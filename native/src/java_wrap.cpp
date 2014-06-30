@@ -657,6 +657,7 @@ jobject convertRouteDataObjectToJava(JNIEnv* ienv, RouteDataObject* route, jobje
 	jintArray nameInts = ienv->NewIntArray(route->names.size());
 	jobjectArray nameStrings = ienv->NewObjectArray(route->names.size(), jclassString, NULL);
 	jint* ar = new jint[route->names.size()];//NEVER DEALLOCATED
+//std::cerr << "names #" << route->names.size() << " namesIds #" << route->namesIds.size() << std::endl;
 	UNORDERED(map)<int, std::string >::iterator itNames = route->names.begin();
 	jsize sz = 0;
 	for (; itNames != route->names.end(); itNames++, sz++) {
@@ -1053,10 +1054,10 @@ sub.Box(bbox_t(point_t(sub.left, sub.top), point_t(sub.right, sub.bottom)));////
 				ienv->DeleteLocalRef(robj);
 			}
 		}
-		for (int i = result.size()-1; i >= 0; --i) {
-			delete result[i];
-			result[i] = NULL;
-		}
+//		for (int i = result.size()-1; i >= 0; --i) {
+//			delete result[i];
+//			result[i] = NULL;
+//		}
 		return ienv->NewObject(jclass_NativeRouteSearchResult, jmethod_NativeRouteSearchResult_init, ((jlong) 0), res);
 	} else {
 		NativeRoutingTile* r = new NativeRoutingTile();

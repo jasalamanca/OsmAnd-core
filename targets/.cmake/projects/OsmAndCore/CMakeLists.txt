@@ -74,6 +74,7 @@ add_library(osmand SHARED
 	"${ROOT}/src/renderRules.cpp"
 	"${ROOT}/src/rendering.cpp"
 	"${ROOT}/src/binaryRead.cpp"
+	"${ROOT}/src/binaryMapIndexRead.cpp"
 	"${ROOT}/src/binaryRoutingIndexRead.cpp"
 	"${ROOT}/src/generalRouter.cpp"
 	"${ROOT}/src/binaryRoutePlanner.cpp"

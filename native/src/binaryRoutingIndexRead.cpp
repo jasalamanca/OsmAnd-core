@@ -15,6 +15,8 @@
 ////
 // EXTERNAL
 extern std::map< std::string, BinaryMapFile* > openFiles;
+typedef std::vector<std::string> StringTable_t;
+bool readStringTable(CodedInputStream & input, StringTable_t & list);
 
 //////////////////////////
 //// RoutingIndex
@@ -229,7 +231,8 @@ void searchRouteSubRegion(int fileInd, std::vector<RouteDataObject*>& list,
 OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "searchRSR DESPUÉS dataObject #list %d", list.size());
 }
 
-void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list, RouteSubregion const * sub){
+void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list,
+		RouteSubregion const * sub){
 	std::map<std::string, BinaryMapFile*>::const_iterator i = openFiles.begin();
 	RoutingIndex const * rs = sub->routingIndex;
 ////OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "index name/query name %s", rs->name.c_str());
@@ -405,7 +408,6 @@ bool readRouteNames(CodedInputStream & input, RouteDataObject * output)
 	{
 		readUInt32(input, s);
 		readUInt32(input, t);
-//		output->namesIds.push_back(std::pair<uint32_t, uint32_t>(s, t));
 		output->namesIds.push_back(std::make_pair(s, t));
 	}
 	return true;
@@ -441,6 +443,8 @@ bool readRoutePTypes(CodedInputStream & input, RouteDataObject * output)
 bool readRouteDataObject(CodedInputStream & input, RouteDataObject * output,
 		RouteSubregion const & context)
 {
+//std::cerr << "BEGIN readRDO pos " << input.TotalBytesRead() << " RDO dir " << output << std::endl;
+
 	LDMessage<> inputManager(input);
 	int tag;
 //	std::vector<size_t> skipped;  ////// Hay que tragar con puntos iguales.
@@ -464,10 +468,6 @@ bool readRouteDataObject(CodedInputStream & input, RouteDataObject * output,
 			readRoutePTypes(input, output);
 			break;
 		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				updatePointTypes(output->pointTypes, skipped);
-////				return true;
-////			}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
@@ -475,37 +475,14 @@ bool readRouteDataObject(CodedInputStream & input, RouteDataObject * output,
 		}
 	} // end while
 //	updatePointTypes(output->pointTypes, skipped);
-	return true;
-}
-
-typedef std::vector<std::string> StringTable_t;
-bool readStringTable(CodedInputStream & input, StringTable_t & list)
-{
-	LDMessage<> inputManager(input);
-	uint32_t tag;
-	while ((tag = input.ReadTag()) != 0)
-	{
-		switch (WireFormatLite::GetTagFieldNumber(tag))
-		{
-		case StringTable::kSFieldNumber:
-		{
-			std::string s;
-			WireFormatLite::ReadString(&input, &s);
-			list.push_back(std::move(s));
-			break;
-		}
-		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return false;
-////			}
-			if (!skipUnknownFields(input, tag)) {
-//				input.Skip(input.BytesUntilLimit());
-				return false;
-			}
-			break;
-		}
-	}
-//	input.Skip(input.BytesUntilLimit());
+//std::cerr << "readRDO types #" << output->types.size() << std::endl;
+//std::cerr << "readRDO id " << output->id << std::endl;
+//std::cerr << "readRDO points #" << output->pointsX.size() << std::endl;
+//std::cerr << "readRDO namesIds #" << output->namesIds.size() << std::endl;
+if (output->pointTypes.size() > 0)
+	std::cerr << "readRDO Ptypes #" << output->pointTypes.size() << std::endl;
+//std::cerr << "names #" << output->names.size() << std::endl;
+//std::cerr << "END readRDO pos " << input.TotalBytesRead() << std::endl;
 	return true;
 }
 
@@ -599,7 +576,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d",
 	LDMessage<OSMAND_FIXED32> inputManager(input);
 	output.subregions.reserve(NODE_CAPACITY);
 	uint32_t tag;
-////	int i = 0;
 	while ((tag = input.ReadTag()) != 0)
 	{
 		switch (WireFormatLite::GetTagFieldNumber(tag))
@@ -612,9 +588,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d",
 				}
 			break;
 		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return true;
-////			}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
@@ -632,12 +605,10 @@ bool readRouteTreeData(CodedInputStream & input, RouteSubregion & output, Routin
 OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeData from %d", input.TotalBytesRead());
 	LDMessage<> inputManager(input);
 	RouteDataObjects_t dataObjects(NODE_CAPACITY);
-	// Reduce reallocations and moves
-////	output.dataObjects.reserve(NODE_CAPACITY);
-	int tag;
 	IdTable_t idTables;
 	Restrictions_t restrictions;
 	std::vector<std::string> stringTable;
+	int tag;
 	while ((tag = input.ReadTag()) != 0)
 	{
 		switch (WireFormatLite::GetTagFieldNumber(tag))
@@ -664,9 +635,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeData from %d", 
 			readIdTable(input, idTables);
 			break;
 		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return true;
-////			}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
@@ -749,9 +717,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", 
 			break;
 
 		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return true;
-////			}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
@@ -763,15 +728,14 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", 
 std::cerr << "Box read " << output.Box() << std::endl;
 	if (objectsOffset == 0)
 	{  // An intermediate node.
-		output.ContentReader([lPos, /*&output,*/ ind, fd](RouteSubregion & output)
+		output.ContentReader([lPos, ind, fd](RouteSubregion & output)
 				{
-			lseek(fd, 0, SEEK_SET); // need to start from begining
-			FileInputStream is(fd);
-			is.SetCloseOnDelete(false);
-			//FileInputStream is(dup(fd));
-			//is.SetCloseOnDelete(true);
+			int filed = dup(fd); // Duplicated fd to permit parallel access.
+			lseek(filed, 0, SEEK_SET); // need to start from begining
+			FileInputStream is(filed);
+			is.SetCloseOnDelete(true);
 			CodedInputStream input(&is);
-			input.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
+			input.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 			input.Seek(lPos); // Needed to correctelly set TotalBytesRead
 			readRouteTreeNodes(input, output, ind, fd);
 				});
@@ -779,15 +743,14 @@ std::cerr << "Box read " << output.Box() << std::endl;
 	else
 	{  // A leaf node.
 		uint32_t pos = mPos+objectsOffset;
-		output.ContentReader([pos, /*&output,*/ ind, fd](RouteSubregion & output)
+		output.ContentReader([pos, ind, fd](RouteSubregion & output)
 				{
 			int filed = dup(fd); // Duplicated fd to permit parallel access.
 			lseek(filed, 0, SEEK_SET); // need to start from begining
 			FileInputStream is(filed);
-			//is.SetCloseOnDelete(false);
 			is.SetCloseOnDelete(true);
 			CodedInputStream input(&is);
-			input.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
+			input.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
 			input.Seek(pos); // Needed to correctelly set TotalBytesRead
 			readRouteTreeData(input, output, ind);
 				});
@@ -812,12 +775,8 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", in
 			readRouteEncodingRule(input, output, defaultId++);
 			break ;
 		case OsmAndRoutingIndex::kRootBoxesFieldNumber:
-		case OsmAndRoutingIndex::kBasemapBoxesFieldNumber:{
-//			if(readOnlyRules){
-//				input->Seek(output->filePointer + output->length);
-//				break;
-//			}
-
+		case OsmAndRoutingIndex::kBasemapBoxesFieldNumber:
+		{
 			bool basemap = WireFormatLite::GetTagFieldNumber(tag) == OsmAndRoutingIndex::kBasemapBoxesFieldNumber;
 			RouteSubregion subregion(&output);
 			readRouteTreeBase(input, subregion, NULL, &output, fd);
@@ -834,9 +793,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", in
 			input.Skip(input.BytesUntilLimit());
 			break;
 		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return true;
-////			}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}

@@ -687,9 +687,9 @@ void RoutingContext::reregisterRouteDataObject(SHARED_PTR<RouteDataObject> o, in
 SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx) {
 	std::vector<SHARED_PTR<RouteDataObject> > dataObjects;
 	ctx->loadTileData(px, py, 17, dataObjects);
-	if (dataObjects.empty()) {
-		ctx->loadTileData(px, py, 15, dataObjects);
-	}
+//	if (dataObjects.empty()) {
+//		ctx->loadTileData(px, py, 15, dataObjects);
+//	}
 
 	// Candidate
 	RouteDataObject * road = NULL;

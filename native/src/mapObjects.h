@@ -19,6 +19,7 @@ public:
 	coordinates points;
 	std::vector < coordinates > polygonInnerCoordinates;
 
+	// TODO Maybe auxiliar. Remove it.
 	UNORDERED(map)< std::string, unsigned int> stringIds;
 
 	UNORDERED(map)< std::string, std::string > objectNames;

@@ -337,8 +337,8 @@ bool readCoordinates(CodedInputStream & input, coordinates & output,
 {
 	LDMessage<> inputManager(input);
 	// Delta encoded coordinates
-	int px = tree.left & MASK_TO_READ;
-	int py = tree.top & MASK_TO_READ;
+	int px = tree.Box().min_corner().x() & MASK_TO_READ;
+	int py = tree.Box().min_corner().y() & MASK_TO_READ;
 	int x;
 	int y;
 	while (input.BytesUntilLimit() > 0)
@@ -424,10 +424,11 @@ MapDataObject* readMapDataObject(CodedInputStream & input,
 bool readMapDataBlocks(CodedInputStream & input, MapTreeBounds & output,
 		MapIndex const & index)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readMapData from %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readMapData from %d", input.TotalBytesRead());
 	LDMessage<> inputManager(input);
 	uint64_t baseId = 0;
-	MapDataObjects_t dataObjects(NODE_CAPACITY);
+	MapDataObjects_t dataObjects;
+	dataObjects.reserve(NODE_CAPACITY);
 	StringTable_t stringTable;
 	int tag;
 	while ((tag = input.ReadTag()) != 0)
@@ -479,9 +480,10 @@ bool readMapTreeBoundsBase(CodedInputStream & input, MapTreeBounds & output,
 bool readMapTreeBoundsNodes(CodedInputStream & input, MapTreeBounds & output,
 		MapIndex const & index, int fd)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d", input.TotalBytesRead());
 	LDMessage<OSMAND_FIXED32> inputManager(input);
-	MapTreeBounds::Bounds_t nodes(NODE_CAPACITY);
+	MapTreeBounds::Bounds_t nodes;
+	nodes.reserve(NODE_CAPACITY);
 	int tag;
 	while ((tag = input.ReadTag()) != 0)
 	{
@@ -495,7 +497,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d",
 			}
 			readMapTreeBoundsBase(input, node, output, index, fd);
 			nodes.push_back(std::move(node));
-////			input->Seek(node->filePointer + node->length);
 			break;
 		}
 		default:
@@ -505,7 +506,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d",
 			break;
 		}
 	}  // End of while
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "DESPUÉS readMTNodes #nodes %d", nodes.size());
 
 	output.Children(std::move(nodes));
 	return true;
@@ -514,7 +514,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "DESPUÉS readMTNodes #nodes 
 bool readMapTreeBoundsBase(CodedInputStream & input, MapTreeBounds & output,
 		MapTreeBounds const & root, MapIndex const & index, int fd)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapBB pos %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapBB pos %d", input.TotalBytesRead());
 	uint32_t lPos = input.TotalBytesRead();
 	LDMessage<OSMAND_FIXED32> inputManager(input);
 	uint32_t mPos = input.TotalBytesRead();
@@ -550,7 +550,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapBB pos %d", input.Tot
 		// Is a leaf
 		case OsmAndMapIndex_MapDataBox::kShiftToMapDataFieldNumber:
 			readInt(input, objectsOffset);
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", objectsOffset);
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", objectsOffset);
 			break;
 		default:
 			if (!skipUnknownFields(input, tag)) {
@@ -561,7 +561,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", 
 	}  // end of while
 
 	output.Box(bbox_t(point_t(output.left, output.top), point_t(output.right, output.bottom)));
-std::cerr << "MapTreeBounds Box read " << output.Box() << std::endl;
+//std::cerr << "MapTreeBounds Box read " << output.Box() << std::endl;
 	if (objectsOffset == 0)
 	{  // An intermediate node.
 		output.ContentReader([lPos, &index, fd](MapTreeBounds & output)
@@ -705,7 +705,7 @@ bool readMapLevelNodes(CodedInputStream & input, MapTreeBounds & output,
 bool readMapLevelBase(CodedInputStream & input, MapRoot & output,
 		MapIndex const & index, int fd)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapLevel pos %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapLevel pos %d", input.TotalBytesRead());
 	uint32_t pos = input.TotalBytesRead();
 	LDMessage<OSMAND_FIXED32> inputManager(input);
 	int tag;
@@ -750,7 +750,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapLevel pos %d", input.
 	} // End of while
 
 	output.Box(bbox_t(point_t(output.left, output.top), point_t(output.right, output.bottom)));
-std::cerr << "MapRoot Box read " << output.Box() << std::endl;
+//std::cerr << "MapRoot Box read " << output.Box() << std::endl;
 	// Lazy read of nodes
 	//output.ContentReader([pos, &index, fd](MapRoot & output)
 	output.ContentReader([pos, &index, fd](MapTreeBounds & output)
@@ -805,9 +805,9 @@ bool readMapEncodingRule(CodedInputStream & input, MapIndex & output, uint32_t i
 }
 
 bool readMapIndex(CodedInputStream & input, MapIndex & output,
-		int fd)//, bool onlyInitEncodingRules)
+		int fd)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapIndex pos %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapIndex pos %d", input.TotalBytesRead());
 	LDMessage<OSMAND_FIXED32> inputManager(input);
 	uint32_t tag;
 	uint32_t defaultId = 1;
@@ -826,7 +826,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapIndex pos %d", input.
 			MapRoot mapLevel;
 			readMapLevelBase(input, mapLevel, output, fd);
 			output.levels.push_back(std::move(mapLevel));
-////			input->Seek(mapLevel.filePointer + mapLevel.length);
 			break;
 		}
 		default:
@@ -845,9 +844,9 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapIndex pos %d", input.
 	using boost::geometry::expand;
 	for_each(output.levels, [&box](MapRoot const & r){expand(box, r.Box());});
 	output.Box(box);
-std::cout << "Box " << output.Box() << std::endl;
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readMI #decR %d, #levels %d",
-			output.decodingRules.size(), output.levels.size());
+//std::cout << "Box " << output.Box() << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readMI #decR %d, #levels %d",
+//			output.decodingRules.size(), output.levels.size());
 	return true;
 }
 

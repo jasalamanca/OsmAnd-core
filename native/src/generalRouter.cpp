@@ -226,7 +226,6 @@ std::string const & GeneralRouter::getAttribute(std::string const & attribute) {
 
 bool GeneralRouter::acceptLine(SHARED_PTR<RouteDataObject> const & way) {
 	int res = getObjContext(RouteDataObjectAttribute::ACCESS).evaluateInt(way, 0);
-///OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "accept %lld %d", way->id, res);///
 	return res >= 0;
 }
 
@@ -234,12 +233,14 @@ int GeneralRouter::isOneWay(SHARED_PTR<RouteDataObject> const & road) {
 	return getObjContext(RouteDataObjectAttribute::ONEWAY).evaluateInt(road, 0);
 }
 
+/***
 double GeneralRouter::defineObstacle(SHARED_PTR<RouteDataObject> const & road, uint point) {
 	if(road->pointTypes.size() > point && road->pointTypes[point].size() > 0){
 		return getObjContext(RouteDataObjectAttribute::OBSTACLES).evaluateDouble(road->region, road->pointTypes[point], 0);
 	}
 	return 0;
 }
+*****/
 
 double GeneralRouter::defineRoutingObstacle(SHARED_PTR<RouteDataObject> const & road, uint point) {
 	if(road->pointTypes.size() > point && road->pointTypes[point].size() > 0){

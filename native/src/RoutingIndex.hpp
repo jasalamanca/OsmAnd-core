@@ -14,8 +14,6 @@
 #include <unistd.h>
 #endif
 #include <map>
-//#include <vector>
-//#include <string>
 #include "Common.h"
 #include "common2.h"
 
@@ -24,13 +22,11 @@
 #endif
 
 #include "Map.hpp"
-
-
-//#include "mapObjects.h"
-//#include "renderRules.h"
 #include "binaryRead.h"
 
 #include <boost/geometry/algorithms/intersects.hpp>
+#include <boost/geometry/algorithms/equals.hpp>////
+#include <boost/geometry/algorithms/covered_by.hpp>////
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/function.hpp>
@@ -40,179 +36,6 @@
 // Full response type
 //TODO typedef std::vector<RouteDataObject> RouteDataObjects_t;
 typedef std::vector<RouteDataObject *> RouteDataObjects_t;
-
-////struct RoutingIndex;
-//struct RouteSubregion;
-//struct RouteDataObject;
-struct RouteSubregion
-{
-	typedef std::vector<RouteSubregion> SubRegions_t;
-	typedef boost::function<void(RouteSubregion &)> Reader_t;
-
-	uint32_t length;
-	uint32_t filePointer;
-	uint32_t mapDataBlock;
-	uint32_t left;
-	uint32_t right;
-	uint32_t top;
-	uint32_t bottom;
-	RoutingIndex* routingIndex;
-
-	RouteSubregion(RoutingIndex* ind) : /*length(0), filePointer(0), mapDataBlock(0),*/ routingIndex(ind){
-	}
-
-	// TODO extract as algorithm and do a lazy implementation.
-	// Incrementally add results
-	void query(bbox_t const & b, RouteDataObjects_t & result) const
-	{
-		using boost::geometry::intersects;
-		using boost::range::for_each;
-		using boost::range::copy;
-
-		// I can't say anything
-		if (!intersects(b, box))
-			return;
-
-std::cerr << " RSR query box? " << b << " in " << box << std::endl;
-////OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "ANTES #subregions %d #dataObjects %d", subregions.size(), dataObjects.size());
-		// Before using data
-		((RouteSubregion *)this)->readContent();  // TODO cast????
-
-////OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "DESPUÉS #subregions %d #dataObjects %d", subregions.size(), dataObjects.size());
-		// THINK: Maybe using boost::function to do only 1 call (one of them do nothing)
-		for_each(subregions,
-				 [&b, &result](RouteSubregion const & node){node.query(b, result);});
-// TODO add boxes to DataObject and propagate query to DataObjects.
-		copy(dataObjects, std::back_inserter(result));
-	}
-
-	// TODO Remove as soon as possible
-	void queryLeafNode(bbox_t const & b, std::vector<RouteSubregion> & result) const
-	{
-		using boost::geometry::intersects;
-		using boost::range::for_each;
-		using boost::range::copy;
-
-		// I can't say anything
-		if (!intersects(b, box))
-			return;
-
-		// Before using data
-		((RouteSubregion *)this)->readContent();  // TODO cast????
-
-		// Add this one
-		if (dataObjects.size() > 0) result.push_back(*this);
-	}
-
-	void ContentReader(Reader_t r)
-	{
-		contentReader = r;
-	}
-
-	void DataObjects(RouteDataObjects_t && objs)
-	{
-		dataObjects = objs;
-	}
-	// Be careful
-	void Box(bbox_t const & b)
-	{
-		box = b;
-	}
-	bbox_t const & Box() const
-	{
-		return box;
-	}
-private:
-
-	// Read if not yet
-	void readContent()
-	{
-		if (!hasContent())
-			if (contentReader)
-				contentReader(*this);
-	}
-
-	// Both data structures empty
-	bool hasContent() const
-	{
-		return !subregions.empty() || !dataObjects.empty();
-	}
-
-	bbox_t box;
-
-	// Could be an intermediate or leaf node depending on what data has.
-public: 	SubRegions_t subregions; private:
-	RouteDataObjects_t dataObjects;
-
-	Reader_t contentReader;
-};
-
-struct RoutingIndex : BinaryPartIndex
-{
-	std::vector<tag_value> decodingRules;
-	typedef std::vector<RouteSubregion> regions_t;
-	regions_t subregions;
-	regions_t basesubregions;
-	RoutingIndex()
-	: BinaryPartIndex(ROUTING_INDEX),
-	  box(point_t(INT_MAX, INT_MAX), point_t(-1, -1))
-	{}
-
-	// TODO What really is basemap????
-	void query(bbox_t const & b, bool base, RouteDataObjects_t & result) const
-	{
-std::cerr << "RI.query " << (base?"basemap ":"map ") << "box? " << b << " in " << box << std::endl;
-		using boost::geometry::intersects;
-		using boost::range::for_each;
-		using boost::range::copy;
-
-		// I can't say anything
-		if (!intersects(b, box))
-			return;
-
-		auto & rs = base?basesubregions:subregions;
-		for_each(rs,
-				 [&b, &result](RouteSubregion const & node){node.query(b, result);});
-	}
-
-	// Remove as soon as possible
-	void queryLeafNodes(bbox_t const & b, bool base, std::vector<RouteSubregion> & result) const
-	{
-std::cerr << "RI.queryLNodes " << (base?"basemap ":"map ") << "box? " << b << " in " << box << std::endl;
-		using boost::geometry::intersects;
-		using boost::range::for_each;
-		using boost::range::copy;
-
-		// I can't say anything
-		if (!intersects(b, box))
-			return;
-
-		auto & rs = base?basesubregions:subregions;
-		for_each(rs,
-				 [&b, &result](RouteSubregion const & node){node.queryLeafNode(b, result);});
-	}
-
-	void initRouteEncodingRule(uint32_t id, std::string const & tag, std::string const & val) {
-		tag_value pair = tag_value(tag, val);
-		while(decodingRules.size() < id + 1){
-			decodingRules.push_back(pair);
-		}
-		decodingRules[id] = pair;
-	}
-
-	bbox_t const & Box() const
-	{
-		return box;
-	}
-
-	void Box(bbox_t & b)
-	{
-		box = b;
-	}
-
-private:
-	bbox_t box;
-};
 
 struct RouteDataObject {
 	RoutingIndex* region;
@@ -225,6 +48,9 @@ struct RouteDataObject {
 
 	UNORDERED(map)<int, std::string > names;
 	std::vector<std::pair<uint32_t, uint32_t> > namesIds;
+
+	RouteDataObject() : box(point_t(INT_MAX, INT_MAX), point_t(-1, -1))
+	{}
 
 	std::string getName() {
 		if(names.size() > 0) {
@@ -257,21 +83,10 @@ struct RouteDataObject {
 	}
 
 	bool loop(){
-		return pointsX[0] == pointsX[pointsX.size() - 1] && pointsY[0] == pointsY[pointsY.size() - 1] ; 
+		return pointsX[0] == pointsX[pointsX.size() - 1] && pointsY[0] == pointsY[pointsY.size() - 1] ;
 	}
 
-	bool roundabout(){
-		uint sz = types.size();
-		for(uint i=0; i < sz; i++) {
-			tag_value r = region->decodingRules[types[i]];
-			if(r.first == "roundabout" || r.second == "roundabout") {
-				return true;
-			} else if(r.first == "oneway" && r.second != "no" && loop()) {
-				return true;
-			}
-		}
-		return false;
-	}
+	bool roundabout();
 
 	double directionRoute(int startPoint, bool plus) const {
 		// look at comment JAVA
@@ -357,10 +172,225 @@ struct RouteDataObject {
 
 	void query(bbox_t const & b, RouteDataObjects_t & result) const
 	{
-		// TODO Test geometric condition
-		result.push_back(const_cast<RouteDataObject *>(this));
-		return;
+		if (boost::geometry::intersects(b, Box()))
+			result.push_back(const_cast<RouteDataObject *>(this));
 	}
+
+	bbox_t const & Box() const
+	{
+		return box;
+	}
+	void Box(bbox_t const & b)
+	{
+		box = b;
+	}
+
+private:
+	bbox_t box;
+};
+
+struct RouteSubregion
+{
+	typedef std::vector<RouteSubregion> SubRegions_t;
+	typedef boost::function<void(RouteSubregion &)> Reader_t;
+
+	uint32_t filePointer;
+	uint32_t left;
+	uint32_t right;
+	uint32_t top;
+	uint32_t bottom;
+	RoutingIndex* routingIndex;
+
+	RouteSubregion(RoutingIndex* ind) : routingIndex(ind){
+	}
+
+	// TODO extract as algorithm and do a lazy implementation.
+	// Incrementally add results
+	void query(bbox_t const & b, RouteDataObjects_t & result) const
+	{
+		using boost::geometry::intersects;
+		using boost::range::for_each;
+		using boost::range::copy;
+
+		// I can't say anything
+		if (!intersects(b, box))
+			return;
+
+//std::cerr << " RSR query box? " << b << " in " << box << std::endl;
+		// Before using data
+		((RouteSubregion *)this)->readContent();  // TODO cast????
+
+		// THINK: Maybe using boost::function to do only 1 call (one of them do nothing)
+		for_each(subregions,
+				 [&b, &result](RouteSubregion const & node){node.query(b, result);});
+		for_each(dataObjects,
+				[&b, &result](RouteDataObject const * obj){if (obj != NULL) obj->query(b, result);});
+//// TODO add boxes to DataObject and propagate query to DataObjects.
+////		copy(dataObjects, std::back_inserter(result));
+	}
+
+	// TODO Remove as soon as possible
+	void querySub(bbox_t const & b, RouteDataObjects_t & result) const
+	{
+//std::cerr << " RSR querySub box? " << b << " in " << box << std::endl;
+		using boost::range::for_each;
+		using boost::range::copy;
+
+		// I can't say anything
+		if (!boost::geometry::covered_by(b, box))
+			return;
+
+		// Before using data
+		((RouteSubregion *)this)->readContent();  // TODO cast????
+
+//std::cerr << " RSR querySub OK" << std::endl;
+		for_each(subregions,
+				 [&b, &result](RouteSubregion const & node){node.querySub(b, result);});
+		if (boost::geometry::equals(b, box))
+		{
+//std::cerr << " RSR querySub #RDO " << dataObjects.size() << std::endl;
+			copy(dataObjects, std::back_inserter(result));
+		}
+	}
+
+	// TODO Remove as soon as possible
+	void queryLeafNode(bbox_t const & b, std::vector<RouteSubregion> & result) const
+	{
+		using boost::geometry::intersects;
+
+		// I can't say anything
+		if (!intersects(b, box))
+			return;
+
+		// Before using data
+		((RouteSubregion *)this)->readContent();  // TODO cast????
+
+		// Add this one
+		if (dataObjects.size() > 0) result.push_back(*this);
+	}
+
+	void ContentReader(Reader_t r)
+	{
+		contentReader = r;
+	}
+
+	void DataObjects(RouteDataObjects_t && objs)
+	{
+		dataObjects = objs;
+	}
+	// Be careful
+	void Box(bbox_t const & b)
+	{
+		box = b;
+	}
+	bbox_t const & Box() const
+	{
+		return box;
+	}
+private:
+
+	// Read if not yet
+	void readContent()
+	{
+		if (!hasContent())
+			if (contentReader)
+				contentReader(*this);
+	}
+
+	// Both data structures empty
+	bool hasContent() const
+	{
+		return !subregions.empty() || !dataObjects.empty();
+	}
+
+	bbox_t box;
+
+	// Could be an intermediate or leaf node depending on what data has.
+public: 	SubRegions_t subregions; private:
+	RouteDataObjects_t dataObjects;
+
+	Reader_t contentReader;
+};
+
+struct RoutingIndex : BinaryPartIndex
+{
+	std::vector<tag_value> decodingRules;
+	typedef std::vector<RouteSubregion> regions_t;
+	regions_t subregions;
+	regions_t basesubregions;
+	RoutingIndex()
+	: BinaryPartIndex(ROUTING_INDEX),
+	  box(point_t(INT_MAX, INT_MAX), point_t(-1, -1))
+	{}
+
+	// TODO What really is basemap????
+	void query(bbox_t const & b, bool base, RouteDataObjects_t & result) const
+	{
+//std::cerr << "RI.query " << (base?"basemap ":"map ") << "box? " << b << " in " << box << std::endl;
+		using boost::geometry::intersects;
+		using boost::range::for_each;
+		using boost::range::copy;
+
+		// I can't say anything
+		if (!intersects(b, box))
+			return;
+
+		auto & rs = base?basesubregions:subregions;
+		for_each(rs,
+				 [&b, &result](RouteSubregion const & node){node.query(b, result);});
+	}
+
+	// Remove as soon as possible
+	void querySub(bbox_t const & b, bool base, RouteDataObjects_t & result) const
+	{
+		using boost::range::for_each;
+
+		// I can't say anything
+		if (!boost::geometry::covered_by(b, box))
+			return;
+
+		auto & rs = base?basesubregions:subregions;
+		for_each(rs,
+				 [&b, &result](RouteSubregion const & node){node.querySub(b, result);});
+	}
+
+	// Remove as soon as possible
+	void queryLeafNodes(bbox_t const & b, bool base, std::vector<RouteSubregion> & result) const
+	{
+////std::cerr << "RI.queryLNodes " << (base?"basemap ":"map ") << "box? " << b << " in " << box << std::endl;
+		using boost::geometry::intersects;
+		using boost::range::for_each;
+		using boost::range::copy;
+
+		// I can't say anything
+		if (!intersects(b, box))
+			return;
+
+		auto & rs = base?basesubregions:subregions;
+		for_each(rs,
+				 [&b, &result](RouteSubregion const & node){node.queryLeafNode(b, result);});
+	}
+
+	void initRouteEncodingRule(uint32_t id, std::string const & tag, std::string const & val) {
+		tag_value pair = tag_value(tag, val);
+		while(decodingRules.size() < id + 1){
+			decodingRules.push_back(pair);
+		}
+		decodingRules[id] = pair;
+	}
+
+	bbox_t const & Box() const
+	{
+		return box;
+	}
+
+	void Box(bbox_t & b)
+	{
+		box = b;
+	}
+
+private:
+	bbox_t box;
 };
 
 #endif // _ROUTING_INDEX_HPP

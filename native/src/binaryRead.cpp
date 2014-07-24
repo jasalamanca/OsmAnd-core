@@ -13,10 +13,7 @@
 #include <boost/range/numeric.hpp>
 #include <boost/geometry/algorithms/expand.hpp>
 
-////#include <cstdint>
 #include "Logging.h"
-
-//#include "cassert"
 
 #if defined(WIN32)
 #undef min
@@ -394,25 +391,6 @@ void searchRouteRegion(CodedInputStream * input, SearchQuery const * q, RoutingI
 }
 ****/
 
-/*** Creo que se puede quitar y rehacerlo de otra forma
-void updatePointTypes(std::vector<std::vector<uint32_t> > & pointTypes, std::vector<size_t> const & skipped)
-{
-	for (size_t i = 0; i < skipped.size(); ++i)
-	{
-//		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Mirando skipped[%d]=%d de %d", i, skipped[i], pointTypes.size());
-		size_t index = skipped[i];
-
-		if (index >= pointTypes.size()) return; // No more points have type info.
-
-		std::vector<uint32_t> & accumulate = pointTypes[index-1];
-		std::vector<uint32_t> & drop = pointTypes[index];
-		// Accumulate types of both points.
-		accumulate.insert(accumulate.end(), drop.begin(), drop.end());
-		// Delete drop info (index+1 position)
-		pointTypes.erase(pointTypes.begin()+index);
-	}
-}
-****/
 ////////////////////////////////
 ///// End MapIndex
 
@@ -481,9 +459,7 @@ bool initMapStructure(CodedInputStream & input, BinaryMapFile & file)
 		{
 			MapIndex mapIndex;
 			readMapIndex(input, mapIndex, file.fd);//, false);
-////			input.Seek(mapIndex.filePointer + mapIndex.length);///
 			file.mapIndexes.push_back(std::move(mapIndex));
-////			file->indexes.push_back(&file->mapIndexes.back());
 			file.basemap = file.basemap || mapIndex.name.find("basemap") != std::string::npos;
 			break;
 		}
@@ -491,9 +467,7 @@ bool initMapStructure(CodedInputStream & input, BinaryMapFile & file)
 		{
 			RoutingIndex* routingIndex = new RoutingIndex;
 			readRoutingIndex(input, *routingIndex, file.fd);
-////			input->Seek(routingIndex->filePointer + routingIndex->length);///
 			file.routingIndexes.push_back(routingIndex);
-////			file->indexes.push_back(file->routingIndexes.back());
 			break;
 		}
 		case OsmAndStructure::kVersionConfirmFieldNumber:
@@ -555,8 +529,8 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 		for (int i = 0; i < fo->mapindex_size(); i++) {
 			MapIndex mi;
 			MapPart const & mp = fo->mapindex(i);
-			mi.filePointer = mp.offset();
-			mi.length = mp.size();
+			////mi.filePointer = mp.offset();
+			////mi.length = mp.size();
 			mi.name = mp.name();
 			for (int j = 0; j < mp.levels_size(); j++) {
 				MapLevel const & ml = mp.levels(j);
@@ -573,14 +547,13 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 			}
 			mapFile->basemap = mapFile->basemap || mi.name.find("basemap") != std::string::npos;
 			mapFile->mapIndexes.push_back(mi);
-////			mapFile->indexes.push_back(&mapFile->mapIndexes.back());
 		}
 
 		for (int i = 0; i < fo->routingindex_size(); i++) {
 			RoutingIndex *mi = new RoutingIndex();
 			RoutingPart const & mp = fo->routingindex(i);
-			mi->filePointer = mp.offset();
-			mi->length = mp.size();
+			////mi->filePointer = mp.offset();
+			////mi->length = mp.size();
 			mi->name = mp.name();
 			for (int j = 0; j < mp.subregions_size(); j++) {
 				RoutingSubregion const & ml = mp.subregions(j);
@@ -589,9 +562,9 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 				mr.left = ml.left();
 				mr.right = ml.right();
 				mr.top = ml.top();
-				mr.mapDataBlock = ml.shiftodata();
+				////mr.mapDataBlock = ml.shiftodata();
 				mr.filePointer = ml.offset();
-				mr.length = ml.size();
+				////mr.length = ml.size();
 				if (ml.basemap()) {
 					mi->basesubregions.push_back(mr);
 				} else {
@@ -599,7 +572,6 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 				}
 			}
 			mapFile->routingIndexes.push_back(mi);
-////			mapFile->indexes.push_back(mapFile->routingIndexes.back());
 		}
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, "Native file initialized from cache %s", inputName.c_str());
 	} else {
@@ -617,4 +589,34 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 	mapFile->inputName = inputName;
 	openFiles.insert(std::pair<std::string, BinaryMapFile*>(inputName, mapFile));
 	return mapFile;
+}
+
+///////////////
+//// Global access
+void MapQuery(SearchQuery & q/*, MapDataObjects_t & output*/)
+{
+	using boost::range::for_each;
+	for_each(openFiles, [&q/*, &output*/](std::pair<std::string, BinaryMapFile *> const & fp)
+			{
+		BinaryMapFile const * file = fp.second;
+		for_each(file->mapIndexes, [&q/*, &output*/](MapIndex const & index){index.query(q);});
+			});
+}
+
+void RoutingQuery(bbox_t & b, RouteDataObjects_t & output)
+{
+	using boost::range::for_each;
+	for_each(openFiles, [&b, &output](std::pair<std::string, BinaryMapFile *> const & fp)
+			{
+		BinaryMapFile const * file = fp.second;
+		// NO basemap
+		for_each(file->routingIndexes, [&b, &output](RoutingIndex const * index){index->query(b, false, output);});
+			});
+//std::cerr << "RoutingQuery #RDO " << output.size() << std::endl;
+}
+
+void RoutingQuery(SearchQuery & q, RouteDataObjects_t & output)
+{
+	bbox_t b(point_t(q.left, q.top), point_t(q.right, q.bottom));
+	RoutingQuery(b, output);
 }

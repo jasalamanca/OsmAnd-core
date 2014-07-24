@@ -9,7 +9,6 @@
 #include "binaryRead.h"
 
 #include "proto/osmand_odb.pb.h"
-//#include "proto/osmand_index.pb.h"
 #include "proto/utils.hpp"
 
 ////
@@ -36,16 +35,6 @@ void searchRouteSubregions(SearchQuery const * q, std::vector<RouteSubregion> & 
 		std::vector<RoutingIndex*>::iterator routeIndex = file->routingIndexes.begin();
 		for (; routeIndex != file->routingIndexes.end(); routeIndex++)
 		{
-			/****
-			std::vector<RouteSubregion> & subs = basemap? (*routeIndex)->basesubregions : (*routeIndex)->subregions;
-				lseek(file->routefd, 0, SEEK_SET);
-				FileInputStream input(file->routefd);
-				input.SetCloseOnDelete(false);
-				CodedInputStream cis(&input);
-				cis.SetTotalBytesLimit(INT_MAX, INT_MAX >> 1);
-				searchRouteRegion(&cis, q, *routeIndex, subs, tempResult);
-////				checkAndInitRouteRegionRules(file->routefd, (*routeIndex));
- ****/
 			// TODO By now we keep this query to avoid a TOTAL & COMPLETE rewrite of all the code.
 			bbox_t qbox(point_t(q->left, q->top), point_t(q->right, q->bottom));
 			(*routeIndex)->queryLeafNodes(qbox, basemap, tempResult);
@@ -206,36 +195,12 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "idTables[%d] = %d", idTables
 	return true;
 }
 ****/
-void searchRouteSubRegion(int fileInd, std::vector<RouteDataObject*>& list,
-		RoutingIndex const * routingIndex, RouteSubregion const * sub){
-////	checkAndInitRouteRegionRules(fileInd, routingIndex);
-
-	// could be simplified but it will be concurrency with init block
-//	lseek(fileInd, 0, SEEK_SET);
-//	FileInputStream input(fileInd);
-//	input.SetCloseOnDelete(false);
-//	CodedInputStream cis(&input);
-//	cis.SetTotalBytesLimit(INT_MAXIMUM, INT_MAXIMUM >> 1);
-
-//	cis.Seek(sub->filePointer + sub->mapDataBlock);/// Only one seek please
-//	uint32_t length;
-//	cis.ReadVarint32(&length);
-//	uint32_t old = cis.PushLimit(length);
-//	readRouteTreeData(&cis, sub, list, routingIndex);
-//	cis.PopLimit(old);
-	///////////
-////OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "searchRSR ANTES dataObject #list %d", list.size());
-	// TODO I don't know if base map or not is requested.
-	//routingIndex->query(sub->Box(), true, list);
-	routingIndex->query(sub->Box(), false, list);
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "searchRSR DESPUÉS dataObject #list %d", list.size());
-}
 
 void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list,
-		RouteSubregion const * sub){
+		RouteSubregion const & sub)
+{
 	std::map<std::string, BinaryMapFile*>::const_iterator i = openFiles.begin();
-	RoutingIndex const * rs = sub->routingIndex;
-////OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "index name/query name %s", rs->name.c_str());
+	RoutingIndex const * rs = sub.routingIndex;
 	for (; i != openFiles.end() && !q->publisher->isCancelled(); i++) {
 		BinaryMapFile* file = i->second;
 		for (std::vector<RoutingIndex*>::iterator routingIndex = file->routingIndexes.begin();
@@ -243,13 +208,14 @@ void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObj
 			if (q->publisher->isCancelled()) {
 				break;
 			}
-////			if(rs != NULL && (rs->name != (*routingIndex)->name || rs->filePointer != (*routingIndex)->filePointer)){
 			if (rs != NULL && (rs->name != (*routingIndex)->name)){
 				continue;
 			}
-////std::cerr << "Index box " << (*routingIndex)->Box() << " sub box/query box " << sub->Box() << std::endl;
-			searchRouteSubRegion(file->routefd, list, (*routingIndex), sub);
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "dataObject #list %d", list.size());
+			////searchRouteSubRegion(file->routefd, list, (*routingIndex), sub);
+			// TODO I don't know if base map is requested.
+			//routingIndex->query(sub->Box(), true, list);
+			(*routingIndex)->querySub(sub.Box(), false, list);
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "dataObject #list %d", list.size());
 			return;
 		}
 	}
@@ -346,9 +312,6 @@ bool readRouteEncodingRule(CodedInputStream & input, RoutingIndex & index, uint3
 			readUInt32(input, id);
 			break;
 		default:
-////			if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-////				return true;
-////			}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
@@ -358,6 +321,25 @@ bool readRouteEncodingRule(CodedInputStream & input, RoutingIndex & index, uint3
 	// Add rule to index
 	index.initRouteEncodingRule(id, tagS, value);
 	return true;
+}
+
+////
+void updatePointTypes(std::vector<std::vector<uint32_t> > & pointTypes, std::vector<size_t> const & skipped)
+{
+	for (size_t i = 0; i < skipped.size(); ++i)
+	{
+//		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Mirando skipped[%d]=%d de %d", i, skipped[i], pointTypes.size());
+		size_t index = skipped[i];
+
+		if (index >= pointTypes.size()) return; // No more points have type info.
+
+		std::vector<uint32_t> & accumulate = pointTypes[index-1];
+		std::vector<uint32_t> & drop = pointTypes[index];
+		// Accumulate types of both points.
+		accumulate.insert(accumulate.end(), drop.begin(), drop.end());
+		// Delete drop info (index+1 position)
+		pointTypes.erase(pointTypes.begin()+index);
+	}
 }
 
 template <typename SEQ>
@@ -373,29 +355,32 @@ bool readRouteTypes(CodedInputStream & input, SEQ & output)
 }
 
 bool readRoutePoints(CodedInputStream & input, RouteDataObject * output,
-		RouteSubregion const & context)
+		RouteSubregion const & context, std::vector<size_t> & skipped)
 {
 	LDMessage<> inputManager(input);
 	int px = context.Box().min_corner().x() >> ROUTE_SHIFT_COORDINATES;
-	int py = context.Box().min_corner().x() >> ROUTE_SHIFT_COORDINATES;
+	int py = context.Box().min_corner().y() >> ROUTE_SHIFT_COORDINATES;
+	bbox_t box = output->Box();
 	while (input.BytesUntilLimit() > 0)
 	{
 		int deltaX, deltaY;
 		readSint32(input, deltaX);
 		readSint32(input, deltaY);
-//		if (deltaX == 0 && deltaY == 0 && !output->pointsX.empty())
-//		{
-//			skipped.push_back(output->pointsX.size());
-//			continue;
-//		}
+		if (deltaX == 0 && deltaY == 0 && !output->pointsX.empty())
+		{
+			skipped.push_back(output->pointsX.size());
+			continue;
+		}
 
 		uint32_t x = deltaX + px;
 		uint32_t y = deltaY + py;
 		output->pointsX.push_back(x << ROUTE_SHIFT_COORDINATES);
 		output->pointsY.push_back(y << ROUTE_SHIFT_COORDINATES);
+		boost::geometry::expand(box, point_t(x << ROUTE_SHIFT_COORDINATES, y << ROUTE_SHIFT_COORDINATES));
 		px = x;
 		py = y;
 	}
+	output->Box(box);
 	return true;
 }
 
@@ -413,18 +398,6 @@ bool readRouteNames(CodedInputStream & input, RouteDataObject * output)
 	return true;
 }
 
-bool readRoutePTypesValues(CodedInputStream & input, RouteDataObject * output, uint32_t pointInd)
-{
-	LDMessage<> inputManager(input);
-	while (input.BytesUntilLimit() > 0)
-	{
-		uint32_t t;
-		readUInt32(input, t);
-		output->pointTypes[pointInd].push_back(t);
-	}
-	return true;
-}
-
 bool readRoutePTypes(CodedInputStream & input, RouteDataObject * output)
 {
 	LDMessage<> inputManager(input);
@@ -435,7 +408,7 @@ bool readRoutePTypes(CodedInputStream & input, RouteDataObject * output)
 		if (output->pointTypes.size() <= pointInd) {
 			output->pointTypes.resize(pointInd + 1, std::vector<uint32_t>());
 		}
-		readRoutePTypesValues(input, output, pointInd);
+		readRouteTypes(input, output->pointTypes[pointInd]);
 	}
 	return true;
 }
@@ -444,10 +417,9 @@ bool readRouteDataObject(CodedInputStream & input, RouteDataObject * output,
 		RouteSubregion const & context)
 {
 //std::cerr << "BEGIN readRDO pos " << input.TotalBytesRead() << " RDO dir " << output << std::endl;
-
 	LDMessage<> inputManager(input);
+	std::vector<size_t> skipped;
 	int tag;
-//	std::vector<size_t> skipped;  ////// Hay que tragar con puntos iguales.
 	while ((tag = input.ReadTag()) != 0)
 	{
 		switch (WireFormatLite::GetTagFieldNumber(tag))
@@ -459,7 +431,7 @@ bool readRouteDataObject(CodedInputStream & input, RouteDataObject * output,
 			readInt64(input, output->id);
 			break;
 		case RouteData::kPointsFieldNumber:
-			readRoutePoints(input, output, context);
+			readRoutePoints(input, output, context, skipped);
 			break;
 		case RouteData::kStringNamesFieldNumber:
 			readRouteNames(input, output);
@@ -474,21 +446,18 @@ bool readRouteDataObject(CodedInputStream & input, RouteDataObject * output,
 			break;
 		}
 	} // end while
-//	updatePointTypes(output->pointTypes, skipped);
+	updatePointTypes(output->pointTypes, skipped);
 //std::cerr << "readRDO types #" << output->types.size() << std::endl;
 //std::cerr << "readRDO id " << output->id << std::endl;
 //std::cerr << "readRDO points #" << output->pointsX.size() << std::endl;
 //std::cerr << "readRDO namesIds #" << output->namesIds.size() << std::endl;
-if (output->pointTypes.size() > 0)
-	std::cerr << "readRDO Ptypes #" << output->pointTypes.size() << std::endl;
-//std::cerr << "names #" << output->names.size() << std::endl;
-//std::cerr << "END readRDO pos " << input.TotalBytesRead() << std::endl;
+//if (output->pointTypes.size() > 0)
+//	std::cerr << "readRDO Ptypes #" << output->pointTypes.size() << " when read #points " << output->pointsX.size() << std::endl;
 	return true;
 }
 
 typedef UNORDERED(map)<int64_t, std::vector<uint64_t> > Restrictions_t;
 // Reads the restriction for a polyline.
-// A length delimited message.
 bool readRestrictions(CodedInputStream & input, Restrictions_t & output)
 {
 	LDMessage<> inputManager(input);
@@ -514,23 +483,19 @@ bool readRestrictions(CodedInputStream & input, Restrictions_t & output)
 			type = tm;
 			break;
 		default:
-			////		if (WireFormatLite::GetTagWireType(ts) == WireFormatLite::WIRETYPE_END_GROUP) {
-			////			return true;
-			////		}
 			if (!skipUnknownFields(input, ts)) {
 				return false;
 			}
 			break;
 		}
 	}  // end of while
-	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "restriction[%d] += (%d, %d) from,to,type", from, to, type);
+OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "restriction[%d] += (%d, %d) from,to,type", from, to, type);
 	output[from].push_back((to << RESTRICTION_SHIFT) + type);
 	return true;
 }
 
 typedef std::vector<int64_t> IdTable_t;
 // Reads the table of ids.
-// A length delimited message.
 bool readIdTable(CodedInputStream & input, IdTable_t & output)
 {
 	LDMessage<> inputManager(input);
@@ -549,9 +514,6 @@ bool readIdTable(CodedInputStream & input, IdTable_t & output)
 			output.push_back(routeId);
 			break;
 		default:
-			////		if (WireFormatLite::GetTagWireType(tag) == WireFormatLite::WIRETYPE_END_GROUP) {
-			////			return true;
-			////		}
 			if (!skipUnknownFields(input, tag)) {
 				return false;
 			}
@@ -564,15 +526,12 @@ bool readIdTable(CodedInputStream & input, IdTable_t & output)
 bool readRouteTreeBase(CodedInputStream & input, RouteSubregion & output,
 		RouteSubregion const * parentTree,	RoutingIndex * ind, int fd);
 
-// Reads the minimal data for a RTree node and prepare to read the rest.
-// A length delimited message.
 #define NODE_CAPACITY 40
 
 // Reads children
-// A length delimited message.
 bool readRouteTreeNodes(CodedInputStream & input, RouteSubregion & output, RoutingIndex * ind, int fd)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d", input.TotalBytesRead());
 	LDMessage<OSMAND_FIXED32> inputManager(input);
 	output.subregions.reserve(NODE_CAPACITY);
 	uint32_t tag;
@@ -594,17 +553,16 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeNodes from %d",
 			break;
 		}
 	}  // End of while
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "DESPUÉS readRTNodes #subregions %d", output.subregions.size());
 	return true;
 }
 
 // Reads DataObjects for this leaf node.
-//
 bool readRouteTreeData(CodedInputStream & input, RouteSubregion & output, RoutingIndex* routingIndex)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeData from %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeData from %d", input.TotalBytesRead());
 	LDMessage<> inputManager(input);
-	RouteDataObjects_t dataObjects(NODE_CAPACITY);
+	RouteDataObjects_t dataObjects;
+	dataObjects.reserve(NODE_CAPACITY);
 	IdTable_t idTables;
 	Restrictions_t restrictions;
 	std::vector<std::string> stringTable;
@@ -619,7 +577,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeData from %d", 
 			readRouteDataObject(input, obj, output);
 			if (dataObjects.size() <= obj->id ) {
 				dataObjects.resize(obj->id + 1, NULL);//normally dataobject come ordered resize???
-				//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "id %d cap %d", obj->id, dataObjects.capacity());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "id %d cap %d", obj->id, dataObjects.capacity());
 			}
 			obj->region = routingIndex;
 			dataObjects[obj->id] = obj;
@@ -676,6 +634,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRouteTreeData from %d", 
 	return true;
 }
 
+// Reads the minimal data for a RTree node and prepare to read the rest.
 bool readRouteTreeBase(CodedInputStream & input, RouteSubregion & output,
 		RouteSubregion const * parentTree,	RoutingIndex * ind, int fd)
 {
@@ -683,7 +642,7 @@ bool readRouteTreeBase(CodedInputStream & input, RouteSubregion & output,
 	LDMessage<OSMAND_FIXED32> inputManager(input);
 	uint32_t mPos = input.TotalBytesRead();
 	uint32_t objectsOffset = 0; // Will be an intermediate node but if has ShiftToData
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "New RouteSubregion filepos %d", lPos);
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "New RouteSubregion filepos %d", lPos);
 
 	// Start reading message fields
 	uint32_t tag;
@@ -713,7 +672,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "New RouteSubregion filepos %
 		// Is a leaf.
 		case OsmAndRoutingIndex_RouteDataBox::kShiftToDataFieldNumber:
 			readInt(input, objectsOffset);
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", objectsOffset);
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", objectsOffset);
 			break;
 
 		default:
@@ -725,7 +684,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Leaf node. Data offset %d", 
 	}  // End of while
 
 	output.Box(bbox_t(point_t(output.left, output.top), point_t(output.right, output.bottom)));
-std::cerr << "Box read " << output.Box() << std::endl;
+//std::cerr << "Box read " << output.Box() << std::endl;
 	if (objectsOffset == 0)
 	{  // An intermediate node.
 		output.ContentReader([lPos, ind, fd](RouteSubregion & output)
@@ -758,10 +717,13 @@ std::cerr << "Box read " << output.Box() << std::endl;
 	return true;
 }
 
-bool readRoutingIndex(CodedInputStream & input, RoutingIndex & output, int fd)//, bool readOnlyRules)
+bool readRoutingIndex(CodedInputStream & input, RoutingIndex & output, int fd)
 {
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", input.TotalBytesRead());
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", input.TotalBytesRead());
+    // TODO Remove filePointer and length ASAP
 	LDMessage<OSMAND_FIXED32> inputManager(input);
+    output.filePointer = input.TotalBytesRead();
+	output.length = input.BytesUntilLimit();
 	uint32_t defaultId = 1;
 	uint32_t tag;
 	while ((tag = input.ReadTag()) != 0)
@@ -781,6 +743,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", in
 			RouteSubregion subregion(&output);
 			readRouteTreeBase(input, subregion, NULL, &output, fd);
 			if(basemap) {
+//std::cerr << "RSR is basemap" << std::endl;
 				output.basesubregions.push_back(std::move(subregion));
 			} else {
 				output.subregions.push_back(std::move(subregion));
@@ -789,7 +752,6 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", in
 		}
 		case OsmAndRoutingIndex::kBlocksFieldNumber:
 			// Finish reading
-			//input->Seek(routingIndex->filePointer + routingIndex->length);
 			input.Skip(input.BytesUntilLimit());
 			break;
 		default:
@@ -807,11 +769,29 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", in
 	boost::range::for_each(output.basesubregions, op);
 	boost::range::for_each(output.subregions, op);
 	output.Box(box);
-std::cout << "Box " << output.Box() << std::endl;
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRI #decR %d, #subR %d, #basesubR %d",
-		output.decodingRules.size(), output.subregions.size(), output.basesubregions.size());
+//std::cout << "Box " << output.Box() << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readRI #decR %d, #subR %d, #basesubR %d",
+//		output.decodingRules.size(), output.subregions.size(), output.basesubregions.size());
 	return true;
 }
 
 //// Fin RoutingIndex
 ////////////////////////
+
+////////////////
+// AUX for code dependencies
+////////////////////
+bool RouteDataObject::roundabout()
+{
+	uint sz = types.size();
+	for(uint i=0; i < sz; i++) {
+		tag_value r = region->decodingRules[types[i]];
+		if(r.first == "roundabout" || r.second == "roundabout") {
+			return true;
+		} else if(r.first == "oneway" && r.second != "no" && loop()) {
+			return true;
+		}
+	}
+	return false;
+}
+

@@ -36,6 +36,21 @@ struct RouteSegment {
 		return segmentStart;
 	}
 
+	inline float f() const
+	{
+		return distanceFromStart + distanceToEnd;
+	}
+
+	inline float g() const
+	{
+		return distanceFromStart;
+	}
+
+	inline float h() const
+	{
+		return distanceToEnd;
+	}
+
 	RouteSegment(SHARED_PTR<RouteDataObject> const & road, int segmentStart)
 	: segmentStart(segmentStart), road(road),
 	  next(), parentRoute(), parentSegmentEnd(0),
@@ -133,7 +148,7 @@ struct RoutingConfiguration {
 	int zoomToLoad;
 	float heurCoefficient;
 	int planRoadDirection;
-	std::string routerName;
+////	std::string routerName;
 
 	void initParams(MAP_STR_STR& attributes) {
 		planRoadDirection = (int) parseFloat(attributes, "planRoadDirection", 0);
@@ -141,7 +156,7 @@ struct RoutingConfiguration {
 		// don't use file limitations?
 		memoryLimitation = (int)parseFloat(attributes, "nativeMemoryLimitInMB", memoryLimitation);
 		zoomToLoad = (int)parseFloat(attributes, "zoomToLoadTiles", 16);
-		routerName = parseString(attributes, "name", "default");
+		// routerName = parseString(attributes, "name", "default");
 		// routerProfile = parseString(attributes, "baseProfile", "car");
 	}
 
@@ -203,7 +218,7 @@ struct PrecalculatedRouteDirection {
 	quad_tree<int> quadTree;
 
  	inline uint64_t calc(int x31, int y31) {
-		return (((uint64_t) x31) << 32l) + ((uint64_t)y31);
+		return (((uint64_t) x31) << 3l) + ((uint64_t)y31);
 	}
 
 	float getDeviationDistance(int x31, int y31, int ind);
@@ -212,6 +227,7 @@ struct PrecalculatedRouteDirection {
 	float timeEstimate(int begX, int begY, int endX, int endY);
 };
 
+void RoutingQuery(bbox_t & b, RouteDataObjects_t & output);
 struct RoutingContext {
 	typedef UNORDERED(map)<int64_t, SHARED_PTR<RoutingSubregionTile> > MAP_SUBREGION_TILES;
 	typedef UNORDERED(map)<int64_t, std::vector<SHARED_PTR<RoutingSubregionTile> > > MAP_INDEXED_SUBREGIONS;
@@ -220,8 +236,8 @@ struct RoutingContext {
 	int loadedTiles;
 	OsmAnd::ElapsedTimer timeToLoad;
 	OsmAnd::ElapsedTimer timeToCalculate;
-	int firstRoadDirection;
-	int64_t firstRoadId;
+////	int firstRoadDirection;
+////	int64_t firstRoadId;
 	RoutingConfiguration & config;
 	SHARED_PTR<RouteCalculationProgress> progress;
 
@@ -241,12 +257,49 @@ struct RoutingContext {
 private:
 	// To manage modified roads.
 	std::vector<SHARED_PTR<RouteDataObject> > registered;
+	// To memo connections between roads.
+	UNORDERED(map)<int64_t, SHARED_PTR<RouteSegment> > connections;
+	size_t connections_size;
+	UNORDERED(set)<int64_t> loadedRDO;
+
+	void add(SHARED_PTR<RouteDataObject> & o, int x, int y)
+	{
+		connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
+		for (int i = o->pointsX.size()-1; i >= 0; --i)
+		{
+			uint32_t x31 = o->pointsX[i];
+			uint32_t y31 = o->pointsY[i];
+			if (x31 != x || y31 != y) continue;
+			int64_t l = ((int64_t)x31 << 31) + y31;
+			SHARED_PTR<RouteSegment> segment = SHARED_PTR<RouteSegment>(new RouteSegment(o, i));
+			if (connections.count(l) != 0)
+				segment->next = connections[l];
+			connections[l] = segment;
+		}
+	}
+
+	void add(SHARED_PTR<RouteDataObject> & o, bbox_t b)
+	{
+		connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
+		for (int i = o->pointsX.size()-1; i >= 0; --i)
+		{
+			uint32_t x31 = o->pointsX[i];
+			uint32_t y31 = o->pointsY[i];
+			if (!boost::geometry::covered_by(point_t(x31, y31), b)) continue;
+			int64_t l = ((int64_t)x31 << 31) + y31;
+			SHARED_PTR<RouteSegment> segment = SHARED_PTR<RouteSegment>(new RouteSegment(o, i));
+			if (connections.count(l) != 0)
+				segment->next = connections[l];
+			connections[l] = segment;
+		}
+	}
 
 public:
 	RoutingContext(RoutingConfiguration& config)
 		: visitedSegments(0), loadedTiles(0),
-		  firstRoadDirection(0), firstRoadId(0),
+////		  firstRoadDirection(0), firstRoadId(0),
 		  config(config), finalRouteSegment()
+		  , connections_size(0)
 	{
 		precalcRoute.empty = true;
 	}
@@ -262,6 +315,7 @@ public:
 		for(;it != subregionTiles.end(); it++) {
 			sz += it->second->getSize();
 		}
+		sz += connections_size;
 		return sz;
 	}
 
@@ -300,8 +354,8 @@ public:
 				unloadedTiles, loaded);
 	}
 
-	void loadHeaderObjects(int64_t tileId) {
-		std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
+	void loadHeaderObjects(std::vector<SHARED_PTR<RoutingSubregionTile> > & subregions)
+	{
 		bool gc = false;
 		for(size_t j = 0; j<subregions.size() && !gc; j++) {
 			if(!subregions[j]->isLoaded()) {
@@ -317,11 +371,13 @@ public:
 				subregions[j]->setLoaded();
 				SearchQuery q;
 				std::vector<RouteDataObject*> res;
-				searchRouteDataForSubRegion(&q, res, &subregions[j]->subregion);
-				std::vector<RouteDataObject*>::iterator i = res.begin();
+				searchRouteDataForSubRegion(&q, res, subregions[j]->subregion);
+//std::cerr << "loadHO #RDO " << res.size() << std::endl;
+				std::vector<RouteDataObject*>::const_iterator i = res.begin();
 				for(;i!=res.end(); i++) {
 					if(*i != NULL) {
-						SHARED_PTR<RouteDataObject> o(*i);
+						////SHARED_PTR<RouteDataObject> o(*i);
+						SHARED_PTR<RouteDataObject> o(new RouteDataObject(**i));
 						if(acceptLine(o)) {
 							subregions[j]->add(o);
 						}
@@ -332,30 +388,30 @@ public:
 	}
 
 	void loadHeaders(uint32_t xloc, uint32_t yloc) {
+//std::cerr << "loadH x = " << xloc << " y = " << yloc << std::endl;
 		timeToLoad.Start();
-		int z  = config.zoomToLoad;
-		int tz = 31 - z;
+		////int z  = config.zoomToLoad;
+		////int tz = 31 - z;
 		////int64_t tileId = (xloc << z) + yloc;
-		int64_t tileId = (xloc << 31) + yloc;
-		if (indexedSubregions.count(tileId) == 0) {
-//			SearchQuery q((uint32_t) (xloc << tz),
-//							(uint32_t) ((xloc + 1) << tz), (uint32_t) (yloc << tz), (uint32_t) ((yloc + 1) << tz));
-			SearchQuery q(xloc, xloc, yloc, yloc);
+		int64_t tileId = 0; // All together
+		//if (indexedSubregions.count(tileId) == 0) {
+			SearchQuery q(xloc, xloc, yloc, yloc);// l,r,t,b
 			std::vector<RouteSubregion> tempResult;
 			searchRouteSubregions(&q, tempResult, basemap);
 			std::vector<SHARED_PTR<RoutingSubregionTile> > collection;
 			for(size_t i=0; i<tempResult.size(); i++) {
 				RouteSubregion& rs = tempResult[i];
-				//int64_t key = ((int64_t)rs.left << 31)+ rs.filePointer;// Now unsafe
-				int64_t key = ((int64_t)xloc << 31)+ yloc; // Now duplicated
+				int64_t key = ((int64_t)rs.left << 31)+ rs.filePointer;// Now unsafe
 				if(subregionTiles.find(key) == subregionTiles.end()) {
 					subregionTiles[key] = SHARED_PTR<RoutingSubregionTile>(new RoutingSubregionTile(rs));
+					collection.push_back(subregionTiles[key]);// Only new subregions
 				}
-				collection.push_back(subregionTiles[key]);
+				//collection.push_back(subregionTiles[key]);
 			}
-			indexedSubregions[tileId] = collection;
-		}
-		loadHeaderObjects(tileId);
+			//indexedSubregions[tileId] = collection;
+			indexedSubregions[tileId].insert(indexedSubregions[tileId].end(), collection.begin(), collection.end());
+		//}
+		loadHeaderObjects(indexedSubregions[tileId]);
 		timeToLoad.Pause();
 	}
 
@@ -392,7 +448,7 @@ public:
 				int64_t tileId = (xloc << z) + yloc;
 				loadHeaders(xloc, yloc); ***/
 		loadHeaders(x31, y31);
-		int64_t tileId = (x31 << 31) + y31;
+		int64_t tileId = 0; // All together
 				std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
 std::cerr << "loadTD NAT #subReg " << subregions.size() << std::endl;
 				for(size_t j = 0; j<subregions.size(); j++) {
@@ -417,9 +473,27 @@ std::cerr << "loadTD NAT #subReg " << subregions.size() << std::endl;
 std::cerr << "loadTD NAT #RDO " << dataObjects.size() << std::endl;
 	}
 
-	SHARED_PTR<RouteSegment> loadRouteSegment(uint32_t x31, uint32_t y31) {
+private:
+	// Only to trace
+	int cuenta(SHARED_PTR<RouteSegment> kk) const
+	{
+		int count = 0;
+	while (kk != NULL)
+	{
+		count++;
+		kk = kk->next;
+	}
+	return count;
+	}
+public:
+
+	SHARED_PTR<RouteSegment> loadRouteSegment(uint32_t x31, uint32_t y31)
+	{
+//		OsmAnd::ElapsedTimer timer;
+//		timer.Start();
 		UNORDERED(set)<int64_t> excludeDuplications;
 		SHARED_PTR<RouteSegment> original;
+//std::cerr << "NAT loadRS(" << x31 << ", " << y31 << ") #registered=" << registered.size() << std::endl;
 		// First search on new roads. Newer is better.
 		for (int i = registered.size()-1; i >= 0; --i)
 		{
@@ -439,38 +513,104 @@ std::cerr << "loadTD NAT #RDO " << dataObjects.size() << std::endl;
 			}
 		}
 
+#define MEMO
+#ifndef MEMO
 		// Second search on map info.
-		int z = config.zoomToLoad;
-		int64_t xloc = x31 >> (31 - z);
-		int64_t yloc = y31 >> (31 - z);
-		//int64_t tileId = (xloc << z) + yloc;
-		uint64_t l = (((uint64_t) x31) << 31) + (uint64_t) y31;
-		////loadHeaders(xloc, yloc);
-		int64_t tileId = l;
-		loadHeaders(x31, y31);
-		std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
-		for(size_t j = 0; j<subregions.size(); j++) {
-			if(subregions[j]->isLoaded()) {
-				SHARED_PTR<RouteSegment> segment = subregions[j]->routes[l];
-				subregions[j]->access++;
-				while (segment.get() != NULL) {
-					SHARED_PTR<RouteDataObject> const & ro = segment->road;
-					int sStart = segment->segmentStart;
-					int64_t roId = calcRouteId(ro, sStart);
-					if (excludeDuplications.count(roId) == 0) {
-						excludeDuplications.insert(roId);
-						SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, sStart));
-						s->next = original;
-						original = 	s;
+		RouteDataObjects_t objects;
+		bbox_t b(point_t(x31, y31), point_t(x31, y31));
+		timeToLoad.Start();
+		RoutingQuery(b, objects);
+		timeToLoad.Pause();
+		for (int i = objects.size()-1; i >= 0; --i)
+		{
+			if (objects[i] != NULL)
+			{
+				SHARED_PTR<RouteDataObject> ro(new RouteDataObject(*(objects[i])));////
+				if (acceptLine(ro))
+				{
+					for (size_t index = 0; index < ro->pointsX.size(); ++index)
+					{
+						int64_t roId = calcRouteId(ro, index);
+						if (excludeDuplications.count(roId) == 0) {
+							excludeDuplications.insert(roId);
+							if (x31 == ro->pointsX[index] && y31 == ro->pointsY[index])
+							{
+								SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, index));
+								s->next = original;
+								original = 	s;
+							}
+						}
 					}
-					segment = segment->next;
 				}
 			}
 		}
-
+#else
+		// Second search on map info.
+		//// Memo pattern
+		int64_t key = ((int64_t)x31 << 31) + y31;
+		if (connections.count(key) == 0)
+		{
+			RouteDataObjects_t objects;
+			bbox_t b(point_t(x31, y31), point_t(x31, y31));
+			timeToLoad.Start();
+			RoutingQuery(b, objects);
+			timeToLoad.Pause();
+			for (int i = objects.size()-1; i >= 0; --i)
+			{
+				if (objects[i] != NULL)
+				{
+					SHARED_PTR<RouteDataObject> ro(new RouteDataObject(*(objects[i])));////
+					if (acceptLine(ro))
+						add(ro, x31, y31);
+				}
+			}
+		}
+		SHARED_PTR<RouteSegment> segment = connections[key];
+if (segment == NULL) std::cerr << "loadSegment(" << x31 << ',' << y31 << ")=NULL" << std::endl;
+		while (segment != NULL)
+		{
+			SHARED_PTR<RouteDataObject> const & ro = segment->road;
+			int sStart = segment->segmentStart;
+			int64_t roId = calcRouteId(ro, sStart);
+			if (excludeDuplications.count(roId) == 0) {
+				excludeDuplications.insert(roId);
+				SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, sStart));
+				s->next = original;
+				original = 	s;
+			}
+			segment = segment->next;
+		}
+#endif
+////std::cerr << "loadRS original->id " << original->road->id << std::endl;
+//		timer.Pause();
+//		std::cerr << "NAT loadRS time=" << timer.GetElapsedMs() << std::endl;
 		return original;
 	}
 
+	void loadRoad(SHARED_PTR<RouteDataObject> const & roadToLoad)
+	{
+		// Load data on node map.
+		if (loadedRDO.count(roadToLoad->id) == 0)
+		{
+			loadedRDO.insert(roadToLoad->id);
+		RouteDataObjects_t objects;
+		bbox_t b = roadToLoad->Box();
+		timeToLoad.Start();
+		RoutingQuery(b, objects);
+		timeToLoad.Pause();
+		for (int i = objects.size()-1; i >= 0; --i)
+		{
+			if (objects[i] != NULL)
+			{
+				SHARED_PTR<RouteDataObject> ro(new RouteDataObject(*(objects[i])));////
+				if (acceptLine(ro))
+				{
+					add(ro, b);
+				}
+			}
+		}
+		}
+	}
 
 	bool isInterrupted() const {
 		return false;

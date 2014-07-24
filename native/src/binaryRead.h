@@ -6,20 +6,14 @@
 #else
 #include <unistd.h>
 #endif
-//#include <map>
 #include <vector>
 #include <string>
-//#include "Common.h"
-//#include "common2.h"
 
 #if defined(WIN32)
 #define close _close
 #endif
 
-//#include "mapObjects.h"
 #include "renderRules.h"
-
-//#include "RoutingIndex.hpp"
 
 ////
 class RoutingIndex;
@@ -30,6 +24,7 @@ class MapIndex;
 class MapTreeBounds;
 class MapRoot;
 class MapDataObject;
+
 struct ResultPublisher {
 	std::vector< MapDataObject*> result;
 
@@ -98,12 +93,12 @@ enum PART_INDEXES {
 };
 
 struct BinaryPartIndex {
-	uint32_t length;
-	int filePointer;
-	PART_INDEXES type;
+	uint32_t length; // TODO Used to pass dataobjects to java side. We need another form to do that.
+	int filePointer; // TODO Used to pass dataobjects to java side. We need another form to do that.
+////	PART_INDEXES type;
 	std::string name;
 
-	BinaryPartIndex(PART_INDEXES tp) : type(tp) {}
+	BinaryPartIndex(PART_INDEXES tp) {}////: type(tp) {}
 };
 
 ////
@@ -116,7 +111,6 @@ struct BinaryMapFile {
 	uint64_t dateCreated;
 	std::vector<MapIndex> mapIndexes;
 	std::vector<RoutingIndex*> routingIndexes;
-////	std::vector<BinaryPartIndex*> indexes;
 	int fd;
 	int routefd;
 	bool basemap;
@@ -133,14 +127,12 @@ struct BinaryMapFile {
 
 // Public interface to file maps.
 void searchRouteSubregions(SearchQuery const * q, std::vector<RouteSubregion>& tempResult, bool basemap);
-void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list, RouteSubregion const * sub);
+void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list, RouteSubregion const & sub);
 
 ResultPublisher* searchObjectsForRendering(SearchQuery* q, bool skipDuplicates, int renderRouteDataFile, std::string const & msgNothingFound, int& renderedState);
 
 BinaryMapFile* initBinaryMapFile(std::string const & inputName);
-
 bool initMapFilesFromCache(std::string const & inputName) ;
-
 bool closeBinaryMapFile(std::string const & inputName);
 
 #endif

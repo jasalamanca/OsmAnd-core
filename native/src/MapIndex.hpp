@@ -71,11 +71,10 @@ struct MapTreeBounds
 		if (!intersects(b, box))
 			return;
 
-std::cerr << " MTB query box? " << b << " in " << box << std::endl;
+//std::cerr << " MTB query box? " << b << " in " << box << std::endl;
 		// Before using data
 		((MapTreeBounds *)this)->readContent();  // TODO cast????
 
-////OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "DESPUÉS #nodes %d #MapDataObjects %d", bounds.size(), dataObjects.size());
 		// THINK: Maybe using boost::function to do only 1 call (one of them do nothing)
 		for_each(bounds,
 				 [&b, &result](MapTreeBounds const & node){node.query(b, result);});
@@ -225,7 +224,7 @@ public:
 		if (!intersects(b, box))
 			return;
 
-std::cerr << " MIndex query box? " << b << " in " << box << std::endl;
+//std::cerr << " MIndex query box? " << b << " in " << box << std::endl;
 		MapDataObjects_t result;
 		for_each(levels, [&q, &result](MapRoot const & root) { root.query(q, result); });
 		q.publisher->publish(std::move(result));

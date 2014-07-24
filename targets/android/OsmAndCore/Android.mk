@@ -4,10 +4,13 @@ include $(CLEAR_VARS)
 
 OSMAND_CORE_RELATIVE := ../../../native
 OSMAND_CORE := $(LOCAL_PATH)/$(OSMAND_CORE_RELATIVE)
+OSMAND_EXTERNAL := $(LOCAL_PATH)/../../../externals
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/src \
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH)/src \
 	$(OSMAND_CORE)/include \
-	$(OSMAND_CORE)/src
+	$(OSMAND_CORE)/src \
+	$(OSMAND_EXTERNAL)/boost-android/upstream.patched
 
 LOCAL_CPP_EXTENSION := .cc .cpp
 LOCAL_SRC_FILES := \
@@ -19,6 +22,8 @@ LOCAL_SRC_FILES := \
 	$(OSMAND_CORE_RELATIVE)/src/renderRules.cpp \
 	$(OSMAND_CORE_RELATIVE)/src/rendering.cpp \
 	$(OSMAND_CORE_RELATIVE)/src/binaryRead.cpp \
+	$(OSMAND_CORE_RELATIVE)/src/binaryRoutingIndexRead.cpp \
+	$(OSMAND_CORE_RELATIVE)/src/binaryMapIndexRead.cpp \
         $(OSMAND_CORE_RELATIVE)/src/generalRouter.cpp \
 	$(OSMAND_CORE_RELATIVE)/src/binaryRoutePlanner.cpp \
 	$(OSMAND_CORE_RELATIVE)/src/proto/osmand_index.pb.cc \

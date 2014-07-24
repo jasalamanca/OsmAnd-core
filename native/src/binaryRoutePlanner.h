@@ -7,6 +7,7 @@
 
 // Implementation
 #include <algorithm>
+#include <iostream>
 #include "Logging.h"
 #include "generalRouter.h"
 

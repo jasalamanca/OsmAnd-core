@@ -634,34 +634,6 @@ void searchRouteInternal(RoutingContext* ctx,
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
 }
 
-// TODO Las restricciones se tienen en cuenta dependiendo del orden. Hay que revisar el algoritmo.
-// Buscar un grano más fino en su tratamiento. Crear indice?
-/***
-void RoutingContext::reregisterRouteDataObject(SHARED_PTR<RouteDataObject> o, int segmentStart, uint32_t x31, 
-		uint32_t y31) {
-	uint32_t z  = config.zoomToLoad;
-	uint32_t xloc = (x31) >> (31 -z);
-	uint32_t yloc = (y31) >> (31 -z);
-	int64_t tileId = (xloc << z) + yloc;
-	std::vector<SHARED_PTR<RoutingSubregionTile> >& subregions = indexedSubregions[tileId];
-	for(uint j = 0; j < subregions.size(); j++) {
-		if(subregions[j]->isLoaded()) {
-			UNORDERED(map)<int64_t, SHARED_PTR<RouteSegment> >::iterator s = subregions[j]->routes.begin();
-			while(s != subregions[j]->routes.end()) {
-				SHARED_PTR<RouteSegment> seg = s->second;
-				while(seg.get() != NULL) {
-					if(seg->road->id == o->id  && seg->segmentStart > segmentStart) {
-						seg->segmentStart ++;
-					}
-					seg = seg->next;
-				}
-				s++;
-			}
-		}
-	}
-}
-***/
-
 bool _checkSolution(RoutingContext* ctx,
 		SHARED_PTR<RouteSegment> const & segment, int segmentEnd, int endX, int endY)
 {
@@ -1000,10 +972,6 @@ SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx)
 	bbox_t b(point_t(px,py), point_t(px,py));
 	RouteDataObjects_t dataObjects;
 	RoutingQuery(b, dataObjects);
-//	ctx->loadTileData(px, py, 17, dataObjects);
-////	if (dataObjects.empty()) {
-////		ctx->loadTileData(px, py, 15, dataObjects);
-////	}
 
 	// Candidate
 	RouteDataObject const * road = NULL;
@@ -1125,19 +1093,6 @@ void attachConnectedRoads(RoutingContext* ctx, std::vector<RouteSegmentResult>& 
 	}
 }
 
-/***
-float calcRoutingTime(float parentRoutingTime, SHARED_PTR<RouteSegment> finalSegment, 
-	SHARED_PTR<RouteSegment> segment, RouteSegmentResult& res) {
-	if(segment.get() != finalSegment.get()) {
-		if(parentRoutingTime != -1) {
-			res.routingTime = parentRoutingTime - segment->distanceFromStart;
-		}
-		parentRoutingTime = segment->distanceFromStart;
-	}
-	return parentRoutingTime;
-}
-***/
-
 std::vector<RouteSegmentResult> convertFinalSegmentToResults(RoutingContext* ctx) {
 	std::vector<RouteSegmentResult> result;
 	if (ctx->finalRouteSegment != NULL) {
@@ -1213,10 +1168,4 @@ std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool le
 	std::vector<RouteSegmentResult> res = convertFinalSegmentToResults(ctx);
 	attachConnectedRoads(ctx, res);
 	return res;
-}
-
-bool compareRoutingSubregionTile(SHARED_PTR<RoutingSubregionTile> const & o1, SHARED_PTR<RoutingSubregionTile> const & o2) {
-	int v1 = (o1->access + 1) * pow(10, o1->getUnloadCount()-1);
-	int v2 = (o2->access + 1) * pow(10, o2->getUnloadCount()-1);
-	return v1 < v2;
 }

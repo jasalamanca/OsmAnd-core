@@ -285,104 +285,96 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "YA visitado next (%d, %d) se
 	return false;
 }
 
+inline bool forbidden(int resType)
+{
+	return resType == RESTRICTION_NO_LEFT_TURN
+			|| resType == RESTRICTION_NO_RIGHT_TURN
+			|| resType == RESTRICTION_NO_STRAIGHT_ON
+			|| resType == RESTRICTION_NO_U_TURN;
+}
+
+inline bool obliged(int resType)
+{
+	return (resType == RESTRICTION_ONLY_RIGHT_TURN
+			|| resType == RESTRICTION_ONLY_LEFT_TURN
+			|| resType == RESTRICTION_ONLY_STRAIGHT_ON);
+}
+
+bool goTo(SHARED_PTR<RouteDataObject> const & roadFrom, SHARED_PTR<RouteDataObject> const & roadTo,
+		SHARED_PTR<RouteSegment> const & junctionInfo)
+{
+	/*
+	 * By default we can go from first road to second.
+	 * We can't if there is a forbiding restriction from first to second road.
+	 * If there is an obligation then it is possible to go.
+	 * And if there is an obligation from first to another road (different to second) then we can't go.
+	 */
+	bool anotherObligation = false;
+	for (int i = roadFrom->restrictions.size()-1; i >= 0; --i)
+	{
+		int rt = roadFrom->restrictions[i] & 7;
+		int64_t restrictedTo = roadFrom->restrictions[i] >> 3;
+		if (restrictedTo == roadTo->id)
+		{
+			return !forbidden(rt);
+		}
+		// Check if there is an obligation to other different road and applies to that junction
+		if (!anotherObligation && obliged(rt))
+		{
+			// check if that restriction applies to considered junction
+			SHARED_PTR<RouteSegment> ji = junctionInfo;
+			while (ji != NULL)
+			{
+				if (ji->road->id == restrictedTo)
+				{
+					anotherObligation = true;
+					break;
+				}
+				ji = ji->next;
+			}
+		}
+	}
+
+	return !anotherObligation;
+}
+
+//const static int RESTRICTION_SHIFT = 3;
+//const static int RESTRICTION_MASK = 7;
+
 SHARED_PTR<RouteSegment> proccessRestrictions(RoutingContext* ctx, SHARED_PTR<RouteDataObject> const & road,
 		SHARED_PTR<RouteSegment> const & inputNext, bool reverseWay)
 {
-	if (!reverseWay && road->restrictions.empty()) {
-		return inputNext;
-	}
+	// Configurable
 	if(!ctx->config.router.restrictionsAware()) {
 		return inputNext;
 	}
 
-	bool exclusiveRestriction = false;
-	std::vector<SHARED_PTR<RouteSegment> > segmentsToVisitPrescripted;
-	std::vector<SHARED_PTR<RouteSegment> > segmentsToVisitNotForbidden;
+	// Shortcut
+	if (!reverseWay && road->restrictions.empty()) {
+		return inputNext;
+	}
+
 	SHARED_PTR<RouteSegment> next = inputNext;
-	while (next != NULL) {
-//if (TRACE_ROUTING) std::cerr << "Restrictions TEST " << next->road->id << '[' << next->segmentStart << ']' << std::endl;
-		int type = -1;
-		if (!reverseWay)
+	SHARED_PTR<RouteSegment> res = NULL;
+	while (next != NULL)
+	{
+		bool valid = (!reverseWay)?
+			goTo(road, next->road, inputNext):
+			goTo(next->road, road, inputNext);
+		if (valid)
 		{
-			// TODO mapa para las restricciones
-			int64_t id = next->road->id;
-			for (size_t i = 0; i < road->restrictions.size(); i++) {
-				if ((road->restrictions[i] >> 3) == id) {
-					type = road->restrictions[i] & 7;
-					break;
-				}
-			}
+			// TODO by now we must deep copy to avoid to break inputNext.
+			// Think about using container instead of next-linked list
+			SHARED_PTR<RouteSegment> add = SHARED_PTR<RouteSegment>(new RouteSegment(*next));
+			add->next = res;
+			res = add;
 		}
 		else
 		{
-			for (size_t i = 0; i < next->road->restrictions.size(); i++) {
-				int rt = next->road->restrictions[i] & 7;
-				int64_t restrictedTo = next->road->restrictions[i] >> 3;
-				if (restrictedTo == road->id) {
-					type = rt;
-					break;
-				}
-				// Check if there is restriction only to the other than current road
-				if (rt == RESTRICTION_ONLY_RIGHT_TURN || rt == RESTRICTION_ONLY_LEFT_TURN
-				|| rt == RESTRICTION_ONLY_STRAIGHT_ON) {
-					// check if that restriction applies to considered junk
-					SHARED_PTR<RouteSegment> foundNext = inputNext;
-					while (foundNext != NULL) {
-						if (foundNext->road->id == restrictedTo) {
-							break;
-						}
-						foundNext = foundNext->next;
-					}
-					if (foundNext != NULL) {
-						type = REVERSE_WAY_RESTRICTION_ONLY; // special constant
-					}
-				}
-			}
-		}
-		if (type != -1 || exclusiveRestriction)
-		{
-			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "type=%d exclusive=%d %d%s%d",
-					type, exclusiveRestriction, road->id, reverseWay?"<-":"->", next->road->id);
-		}
-		if (type == REVERSE_WAY_RESTRICTION_ONLY) {
-			// next = next.next; continue;
-		} else if (type == -1 && exclusiveRestriction) {
-			// next = next.next; continue;
-		} else if (type == RESTRICTION_NO_LEFT_TURN || type == RESTRICTION_NO_RIGHT_TURN
-				|| type == RESTRICTION_NO_STRAIGHT_ON || type == RESTRICTION_NO_U_TURN) {
-			// next = next.next; continue;
-		} else if (type == -1) {
-			// case no restriction
-			segmentsToVisitNotForbidden.push_back(next);
-		} else {
-			// case exclusive restriction (only_right, only_straight, ...)
-			// 1. in case we are going backward we should not consider only_restriction
-			// as exclusive because we have many "in" roads and one "out"
-			// 2. in case we are going forward we have one "in" and many "out"
-			if (!reverseWay) {
-				exclusiveRestriction = true;
-				segmentsToVisitNotForbidden.clear();
-				segmentsToVisitPrescripted.push_back(next);
-			} else {
-				segmentsToVisitNotForbidden.push_back(next);
-			}
+			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "%d%s%d banned",
+					road->id, reverseWay?"<-":"->", next->road->id);
 		}
 		next = next->next;
-	}
-
-	// Order is not important. Only to keep previous order.
-	SHARED_PTR<RouteSegment> res = NULL;
-	for (int i = segmentsToVisitNotForbidden.size()-1; i >= 0; --i)
-	{
-		segmentsToVisitNotForbidden[i]->next = res;
-		res = segmentsToVisitNotForbidden[i];
-if (TRACE_ROUTING) std::cerr << "Restrictions NOT FORBIDDEN " << res->road->id << '[' << res->segmentStart << ']' << std::endl;
-	}
-	for (int i = segmentsToVisitPrescripted.size()-1; i >= 0; --i)
-	{
-		segmentsToVisitPrescripted[i]->next = res;
-		res = segmentsToVisitPrescripted[i];
-if (TRACE_ROUTING) std::cerr << "Restrictions PRESCRIPTED " << res->road->id << '[' << res->segmentStart << ']' << std::endl;
 	}
 	return res;
 }
@@ -434,8 +426,6 @@ bool visitRouteSegment(RoutingContext* ctx, bool reverseWaySearch, SEGMENTS_QUEU
 				speed = ctx->config.router.getMinDefaultSpeed() * priority;
 			}
 			double distStartObstacles = segment->distanceFromStart + obstacleTime + distOnRoadToPass / speed;
-			//double distToFinalPoint = distance31TileMetric(x, y, targetEndX, targetEndY);
-			//double distanceToEnd = h(ctx, distToFinalPoint, next);
 			double distToFinalPoint = h(ctx, x, y, targetEndX, targetEndY);
 
 			if (TRACE_ROUTING)
@@ -717,67 +707,35 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "Nuevo next.parent %d -> %d",
 SHARED_PTR<RouteSegment> _proccessRestrictions(RoutingContext* ctx, SHARED_PTR<RouteDataObject> const & road,
 		SHARED_PTR<RouteSegment> const & inputNext)
 {
-	if (road->restrictions.empty()) {
-		return inputNext;
-	}
+	// Configurable
 	if(!ctx->config.router.restrictionsAware()) {
 		return inputNext;
 	}
 
-	bool exclusiveRestriction = false;
-	std::vector<SHARED_PTR<RouteSegment> > segmentsToVisitPrescripted;
-	std::vector<SHARED_PTR<RouteSegment> > segmentsToVisitNotForbidden;
-	SHARED_PTR<RouteSegment> next = inputNext;
-	while (next != NULL) {
-if (TRACE_ROUTING) std::cerr << "Restrictions TEST " << next->road->id << '[' << next->segmentStart << ']' << std::endl;
-		int type = -1;
-		int64_t id = next->road->id;
-		for (size_t i = 0; i < road->restrictions.size(); i++) {
-			if ((road->restrictions[i] >> 3) == id) {
-				type = road->restrictions[i] & 7;
-				break;
-			}
-		}
-		if (type != -1 || exclusiveRestriction)
-		{
-			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "type=%d exclusive=%d %d->%d",
-					type, exclusiveRestriction, road->id, next->road->id);
-		}
-		if (type == REVERSE_WAY_RESTRICTION_ONLY) {
-			// next = next.next; continue;
-		} else if (type == -1 && exclusiveRestriction) {
-			// next = next.next; continue;
-		} else if (type == RESTRICTION_NO_LEFT_TURN || type == RESTRICTION_NO_RIGHT_TURN
-				|| type == RESTRICTION_NO_STRAIGHT_ON || type == RESTRICTION_NO_U_TURN) {
-			// next = next.next; continue;
-		} else if (type == -1) {
-			// case no restriction
-			segmentsToVisitNotForbidden.push_back(next);
-		} else {
-			// case exclusive restriction (only_right, only_straight, ...)
-			// 1. in case we are going backward we should not consider only_restriction
-			// as exclusive because we have many "in" roads and one "out"
-			// 2. in case we are going forward we have one "in" and many "out"
-			exclusiveRestriction = true;
-			segmentsToVisitNotForbidden.clear();
-			segmentsToVisitPrescripted.push_back(next);
-		}
-		next = next->next;
+	// Shortcut
+	if (road->restrictions.empty()) {
+		return inputNext;
 	}
 
-	// Order is not important. Only to keep previous order.
+	SHARED_PTR<RouteSegment> next = inputNext;
 	SHARED_PTR<RouteSegment> res = NULL;
-	for (int i = segmentsToVisitNotForbidden.size()-1; i >= 0; --i)
+	while (next != NULL)
 	{
-		segmentsToVisitNotForbidden[i]->next = res;
-		res = segmentsToVisitNotForbidden[i];
-if (TRACE_ROUTING) std::cerr << "Restrictions NOT FORBIDDEN " << res->road->id << '[' << res->segmentStart << ']' << std::endl;
-	}
-	for (int i = segmentsToVisitPrescripted.size()-1; i >= 0; --i)
-	{
-		segmentsToVisitPrescripted[i]->next = res;
-		res = segmentsToVisitPrescripted[i];
-if (TRACE_ROUTING) std::cerr << "Restrictions PRESCRIPTED " << res->road->id << '[' << res->segmentStart << ']' << std::endl;
+		bool valid = goTo(road, next->road, inputNext);
+		if (valid)
+		{
+			// TODO by now we must deep copy to avoid to break inputNext.
+			// Think about using container instead of next-linked list
+			SHARED_PTR<RouteSegment> add = SHARED_PTR<RouteSegment>(new RouteSegment(*next));
+			add->next = res;
+			res = add;
+		}
+		else
+		{
+			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "%d->%d banned",
+					road->id, next->road->id);
+		}
+		next = next->next;
 	}
 	return res;
 }

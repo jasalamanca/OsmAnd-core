@@ -277,9 +277,9 @@ double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment
 		SHARED_PTR<RouteSegment> const & prev, int prevSegmentEnd) const {
 	if(prev->road->pointTypes.size() > (uint)prevSegmentEnd && prev->road->pointTypes[prevSegmentEnd].size() > 0){
 		RoutingIndex* reg = prev->getRoad()->region;
-		std::vector<uint32_t> pt = prev->road->pointTypes[prevSegmentEnd];
+		std::vector<uint32_t> const & pt = prev->road->pointTypes[prevSegmentEnd];
 		for (uint i = 0; i < pt.size(); i++) {
-			tag_value r = reg->decodingRules[pt[i]];
+			tag_value const & r = reg->decodingRules[pt[i]];
 			if ("highway" == r.first && "traffic_signals" == r.second) {
 				// traffic signals don't add turn info
 				return 0;

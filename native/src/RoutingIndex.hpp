@@ -63,13 +63,14 @@ struct RouteDataObject {
 		return id;
 	}
 
-	int getSize() {
+	size_t getSize() const
+	{
 		int s = sizeof(this);
 		s += pointsX.capacity()*sizeof(uint32_t);
 		s += pointsY.capacity()*sizeof(uint32_t);
 		s += types.capacity()*sizeof(uint32_t);
 		s += restrictions.capacity()*sizeof(uint64_t);
-		std::vector<std::vector<uint32_t> >::iterator t = pointTypes.begin();
+		std::vector<std::vector<uint32_t> >::const_iterator t = pointTypes.begin();
 		for(;t!=pointTypes.end(); t++) {
 			s+= (*t).capacity() * sizeof(uint32_t);
 		}

@@ -28,7 +28,8 @@ enum class RouteDataObjectAttribute : unsigned int {
 	ACCESS = 2, // "access"
 	OBSTACLES = 3, // "obstacle_time"
 	ROUTING_OBSTACLES = 4, // "obstacle"
-	ONEWAY = 5// "oneway"
+	ONEWAY = 5,// "oneway"
+	PENALTY_TRANSITION = 6 // 
 };
 
 enum class GeneralRouterProfile {
@@ -258,7 +259,12 @@ public:
 	 * return routing speed in m/s for vehicle for specified road
 	 */
 	double defineRoutingSpeed(SHARED_PTR<RouteDataObject> const & road);
-	
+
+	/*
+	* return transition penalty between different road classes in seconds
+	*/
+	double definePenaltyTransition(SHARED_PTR<RouteDataObject> const & road);
+
 	/**
 	 * return real speed in m/s for vehicle for specified road
 	 */
@@ -276,6 +282,8 @@ public:
 	 */
 	double getMinDefaultSpeed() const;
 
+
+
 	/**
 	 * Used for A* routing to predict h(x) : it should be great any g(x)
 	 * 
@@ -292,7 +300,7 @@ public:
 	 * Calculate turn time 
 	 */
 	double calculateTurnTime(SHARED_PTR<RouteSegment> const & segment, int segmentEnd,
-		SHARED_PTR<RouteSegment> const & prev, int prevSegmentEnd) const;
+		SHARED_PTR<RouteSegment> const & prev, int prevSegmentEnd);
 
 	void printRules() const {
 		for (uint k = 0; k < objectAttributes.size(); k++) {

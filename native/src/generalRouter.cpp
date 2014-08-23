@@ -257,6 +257,10 @@ double GeneralRouter::defineVehicleSpeed(SHARED_PTR<RouteDataObject> const & roa
 	return getObjContext(RouteDataObjectAttribute::ROAD_SPEED) .evaluateDouble(road, getMinDefaultSpeed() * 3.6) / 3.6;
 }
 
+double GeneralRouter::definePenaltyTransition(SHARED_PTR<RouteDataObject> const & road) {
+	return getObjContext(RouteDataObjectAttribute::PENALTY_TRANSITION) .evaluateDouble(road, 0);
+}
+
 double GeneralRouter::defineSpeedPriority(SHARED_PTR<RouteDataObject> const & road) {
 	return getObjContext(RouteDataObjectAttribute::ROAD_PRIORITIES).evaluateDouble(road, 1.);
 }
@@ -274,7 +278,7 @@ bool GeneralRouter::restrictionsAware() const {
 }
 
 double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment, int segmentEnd,
-		SHARED_PTR<RouteSegment> const & prev, int prevSegmentEnd) const {
+		SHARED_PTR<RouteSegment> const & prev, int prevSegmentEnd) {
 	if(prev->road->pointTypes.size() > (uint)prevSegmentEnd && prev->road->pointTypes[prevSegmentEnd].size() > 0){
 		RoutingIndex* reg = prev->getRoad()->region;
 		std::vector<uint32_t> const & pt = prev->road->pointTypes[prevSegmentEnd];
@@ -286,7 +290,12 @@ double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment
 			}
 		}
 	}
-	
+	double ts = definePenaltyTransition(segment->getRoad());
+	double prevTs = definePenaltyTransition(prev->getRoad());
+	if(prevTs != ts) {
+			if(ts > prevTs) return (ts - prevTs);
+	}
+
 	if(segment->getRoad()->roundabout() && !prev->getRoad()->roundabout()) {
 		double rt = roundaboutTurn;
 		if(rt > 0) {

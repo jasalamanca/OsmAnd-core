@@ -372,6 +372,14 @@ if (segment == NULL) std::cerr << "loadSegment(" << x31 << ',' << y31 << ")=NULL
 			loadedRDO.insert(roadToLoad->id);
 		RouteDataObjects_t objects;
 		bbox_t b = roadToLoad->Box();
+		// FIXME To avoid typical errors between subRegion read coordinates and what would really be.
+		// Expand 30 unit around real box.
+		// Previous code loaded tile by tile. That reduced the impact of that bug but the bug remains.
+		// Correct solution implies to calculate boxes bottom-up and update, extending incorrect ones,
+		// which conflicts with lazy reading of map files.
+		b = bbox_t(point_t(b.min_corner().x()-30, b.min_corner().y()-30),
+				point_t(b.max_corner().x()+30, b.max_corner().y()+30));
+		//
 		timeToLoad.Start();
 		RoutingQuery(b, objects);
 		timeToLoad.Pause();

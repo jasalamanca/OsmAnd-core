@@ -26,9 +26,19 @@ void printRoad(const char* prefix, SHARED_PTR<RouteSegment> const & segment) {
                segment->parentRoute != NULL? segment->parentRoute->road->id : 0);
 }
 
-static double h(RoutingContext* ctx, float distanceToFinalPoint, SHARED_PTR<RouteSegment> const & next) {
-	return distanceToFinalPoint / ctx->config.router.getMaxDefaultSpeed();
+void print(SHARED_PTR<RouteDataObject> const & rdo)
+{
+	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, "%d", rdo->id);
+	for (size_t i = 0; i < rdo->pointsX.size(); ++i)
+	{
+		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, "[%d] (%d, %d)",
+				i, rdo->pointsX[i], rdo->pointsY[i]);
+	}
 }
+
+////static double h(RoutingContext* ctx, float distanceToFinalPoint, SHARED_PTR<RouteSegment> const & next) {
+////	return distanceToFinalPoint / ctx->config.router.getMaxDefaultSpeed();
+////}
 
 // translate into meters
 static double squareRootDist(int x1, int y1, int x2, int y2) {
@@ -371,8 +381,11 @@ SHARED_PTR<RouteSegment> proccessRestrictions(RoutingContext* ctx, SHARED_PTR<Ro
 		}
 		else
 		{
-			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "%d%s%d banned",
-					road->id, reverseWay?"<-":"->", next->road->id);
+			if (TRACE_ROUTING)
+			{
+				OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "%d%s%d banned",
+						road->id, reverseWay?"<-":"->", next->road->id);
+			}
 		}
 		next = next->next;
 	}
@@ -604,8 +617,19 @@ void searchRouteInternal(RoutingContext* ctx,
 			if (graphReverseSegments.empty())
 				inverse = false;  // Only direct openset
 			else
-				inverse = !inverse;  // Change direction
-				//inverse = graphReverseSegments.top()->f() < graphDirectSegments.top()->f(); // Better on reverse
+			{
+				//inverse = !inverse;  // Change direction
+				inverse = graphReverseSegments.top()->f() < graphDirectSegments.top()->f();
+				// Choose smaller cost but with equilibrated search spaces
+				if (graphDirectSegments.size() * 1.3 > graphReverseSegments.size())
+				{
+					inverse = true;
+				}
+				else if (graphReverseSegments.size() * 1.3 > graphDirectSegments.size())
+				{
+					inverse = false;
+				}
+			}
 		}
 		graphSegments = inverse?&graphReverseSegments:&graphDirectSegments;
 
@@ -732,8 +756,11 @@ SHARED_PTR<RouteSegment> _proccessRestrictions(RoutingContext* ctx, SHARED_PTR<R
 		}
 		else
 		{
-			OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "%d->%d banned",
-					road->id, next->road->id);
+			if (TRACE_ROUTING)
+			{
+				OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "%d->%d banned",
+						road->id, next->road->id);
+			}
 		}
 		next = next->next;
 	}

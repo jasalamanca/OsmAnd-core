@@ -292,9 +292,9 @@ double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment
 	}
 	double ts = definePenaltyTransition(segment->getRoad());
 	double prevTs = definePenaltyTransition(prev->getRoad());
-	if(prevTs != ts) {
+	//if(prevTs != ts) {
 			if(ts > prevTs) return (ts - prevTs);
-	}
+	//}
 
 	if(segment->getRoad()->roundabout() && !prev->getRoad()->roundabout()) {
 		double rt = roundaboutTurn;
@@ -305,8 +305,7 @@ double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment
 	if (leftTurn > 0 || rightTurn > 0) {
 		double a1 = segment->getRoad()->directionRoute(segment->getSegmentStart(), segment->getSegmentStart() < segmentEnd);
 		double a2 = prev->getRoad()->directionRoute(prevSegmentEnd, prevSegmentEnd < prev->getSegmentStart());
-		double diff = abs(alignAngleDifference(a1 - a2 - M_PI));
-		// more like UT
+		double diff = std::abs(alignAngleDifference(a1 - a2 - M_PI));
 		if (diff > 2 * M_PI / 3) {
 			return leftTurn;
 		} else if (diff > M_PI / 2) {

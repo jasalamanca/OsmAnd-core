@@ -489,7 +489,7 @@ bool readRestrictions(CodedInputStream & input, Restrictions_t & output)
 			break;
 		}
 	}  // end of while
-OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "restriction[%d] += (%d, %d) from,to,type", from, to, type);
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "restriction[%d] += (%d, %d) from,to,type", from, to, type);
 	output[from].push_back((to << RESTRICTION_SHIFT) + type);
 	return true;
 }

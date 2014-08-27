@@ -951,6 +951,7 @@ void _searchRouteInternal(RoutingContext* ctx,
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
 }
 
+#include <boost/range/adaptor/filtered.hpp>
 void RoutingQuery(bbox_t & b, RouteDataObjects_t & output);
 SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx)
 {
@@ -960,6 +961,14 @@ SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx)
 	RouteDataObjects_t dataObjects;
 	RoutingQuery(b, dataObjects);
 
+	auto range = boost::adaptors::filter(dataObjects,
+					[&ctx](RouteDataObject_pointer const & rdo){return rdo != nullptr && ctx->acceptLine(rdo);});
+	if (range.begin() == range.end())
+	{
+		// A second try.
+		b = boost::geometry::make<bbox_t>(px-20000, py-20000, px+20000, py+20000);
+		RoutingQuery(b, dataObjects);
+	}
 	// Candidate
 	RouteDataObject_pointer road;
 	size_t index = 0;

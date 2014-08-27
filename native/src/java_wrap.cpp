@@ -653,12 +653,12 @@ void pullFromJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext 
 
 // ElapsedTimer routingTimer;
 
-jobject convertRouteDataObjectToJava(JNIEnv* ienv, RouteDataObject* route, jobject reg) {
+jobject convertRouteDataObjectToJava(JNIEnv* ienv, RouteDataObject const * route, jobject reg) {
 	jintArray nameInts = ienv->NewIntArray(route->names.size());
 	jobjectArray nameStrings = ienv->NewObjectArray(route->names.size(), jclassString, NULL);
 	jint* ar = new jint[route->names.size()];
 //std::cerr << "names #" << route->names.size() << " namesIds #" << route->namesIds.size() << std::endl;
-	UNORDERED(map)<int, std::string >::iterator itNames = route->names.begin();
+	UNORDERED(map)<int, std::string >::const_iterator itNames = route->names.begin();
 	jsize sz = 0;
 	for (; itNames != route->names.end(); itNames++, sz++) {
 		ar[sz] = itNames->first;
@@ -755,8 +755,8 @@ if (reg == NULL) std::cerr << "ConverToJava with region NULL........." << std::e
 
 class NativeRoutingTile {
 public:
-	std::vector<RouteDataObject*> result;
-	UNORDERED(map)<uint64_t, std::vector<RouteDataObject*> > cachedByLocations;
+	RouteDataObjects_t result;
+	UNORDERED(map)<uint64_t, RouteDataObjects_t> cachedByLocations;
 };
 
 
@@ -766,8 +766,8 @@ extern "C" JNIEXPORT void JNICALL Java_net_osmand_NativeLibrary_deleteRouteSearc
 std::cerr << "deleteNAT" << std::endl;
 	NativeRoutingTile* t = (NativeRoutingTile*) ref;
 	for (unsigned int i = 0; i < t->result.size(); i++) {
-		delete t->result[i];
-		t->result[i] = NULL;
+		////delete t->result[i];
+		t->result[i] = nullptr;
 	}
 	delete t;
 }
@@ -1016,16 +1016,18 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_getRoute
 	NativeRoutingTile* t = (NativeRoutingTile*) ref;
 	uint64_t lr = ((uint64_t) x31 << 31) + y31;
 std::cerr << "NATIVE getRouteDataObjects from " << t << " at " << lr << std::endl;
-	std::vector<RouteDataObject*> collected = t->cachedByLocations[lr];
+	RouteDataObjects_t & collected = t->cachedByLocations[lr];
 	jobjectArray res = ienv->NewObjectArray(collected.size(), jclass_RouteDataObject, NULL);
 	for (jint i = 0; i < collected.size(); i++) {
-		jobject robj = convertRouteDataObjectToJava(ienv, collected[i], reg);
+		// convertRouteDataObjectToJava will do a safe use of base pointer.
+		jobject robj = convertRouteDataObjectToJava(ienv, collected[i].get(), reg);
 		ienv->SetObjectArrayElement(res, i, robj);
 		ienv->DeleteLocalRef(robj);
 	}
 	return res;
 }
 
+void searchRouteDataForSubRegion(SearchQuery const * q, RouteDataObjects_t & list, RouteSubregion const & sub);
 //protected static native NativeRouteSearchResult loadRoutingData(RouteRegion reg, String regName, int regfp, RouteSubregion subreg,
 //			boolean loadObjects);
 extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingData(JNIEnv* ienv,
@@ -1042,7 +1044,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 	sub.top = ienv->GetIntField(subreg, jfield_RouteSubregion_top);
 	sub.bottom = ienv->GetIntField(subreg, jfield_RouteSubregion_bottom);
 	sub.Box(bbox_t(point_t(sub.left, sub.top), point_t(sub.right, sub.bottom)));////
-	std::vector<RouteDataObject*> result;
+	RouteDataObjects_t result;
 	SearchQuery q;
 	searchRouteDataForSubRegion(&q, result, sub);
 
@@ -1050,13 +1052,14 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 	if (loadObjects) {
 		jobjectArray res = ienv->NewObjectArray(result.size(), jclass_RouteDataObject, NULL);
 		for (jint i = 0; i < result.size(); i++) {
-			if (result[i] != NULL) {
-				jobject robj = convertRouteDataObjectToJava(ienv, result[i], reg);
+			if (result[i] != nullptr) {
+				// convertRouteDataObjectToJava will do a safe use of base pointer.
+				jobject robj = convertRouteDataObjectToJava(ienv, result[i].get(), reg);
 				ienv->SetObjectArrayElement(res, i, robj);
 				ienv->DeleteLocalRef(robj);
 			}
 		}
-//		for (int i = result.size()-1; i >= 0; --i) {
+////		for (int i = result.size()-1; i >= 0; --i) {
 //			delete result[i];
 //			result[i] = NULL;
 //		}
@@ -1064,7 +1067,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 	} else {
 		NativeRoutingTile* r = new NativeRoutingTile();
 		for (int i = result.size()-1; i >= 0; --i) {
-			if (result[i] != NULL) {
+			if (result[i] != nullptr) {
 				r->result.push_back(result[i]);
 				for (int j = result[i]->pointsX.size()-1; j >= 0; --j) {
 					uint64_t x = result[i]->pointsX[j];

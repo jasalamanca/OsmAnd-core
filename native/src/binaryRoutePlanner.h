@@ -200,7 +200,7 @@ private:
 	size_t connections_size;
 	UNORDERED(set)<int64_t> loadedRDO;
 
-	void add(SHARED_PTR<RouteDataObject> & o, int x, int y)
+	void add(SHARED_PTR<RouteDataObject> const & o, int x, int y)
 	{
 		connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
 		for (int i = o->pointsX.size()-1; i >= 0; --i)
@@ -216,7 +216,7 @@ private:
 		}
 	}
 
-	void add(SHARED_PTR<RouteDataObject> & o, bbox_t b)
+	void add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b)
 	{
 		connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
 		for (int i = o->pointsX.size()-1; i >= 0; --i)
@@ -266,12 +266,13 @@ public:
 
 	SHARED_PTR<RouteSegment> loadRouteSegment(uint32_t x31, uint32_t y31)
 	{
+//std::cerr << "NAT loadRS(" << x31 << ", " << y31 << ") #registered=" << registered.size() << std::endl;
 //		OsmAnd::ElapsedTimer timer;
 //		timer.Start();
 		UNORDERED(set)<int64_t> excludeDuplications;
 		SHARED_PTR<RouteSegment> original;
-//std::cerr << "NAT loadRS(" << x31 << ", " << y31 << ") #registered=" << registered.size() << std::endl;
 		// First search on new roads. Newer is better.
+		// FIXME Revision on every loadRouteSegment is crazy. We must not update map or change how we update.
 		for (int i = registered.size()-1; i >= 0; --i)
 		{
 			SHARED_PTR<RouteDataObject> const & ro = registered[i];
@@ -290,38 +291,6 @@ public:
 			}
 		}
 
-#define MEMO
-#ifndef MEMO
-		// Second search on map info.
-		RouteDataObjects_t objects;
-		bbox_t b(point_t(x31, y31), point_t(x31, y31));
-		timeToLoad.Start();
-		RoutingQuery(b, objects);
-		timeToLoad.Pause();
-		for (int i = objects.size()-1; i >= 0; --i)
-		{
-			if (objects[i] != NULL)
-			{
-				SHARED_PTR<RouteDataObject> ro(new RouteDataObject(*(objects[i])));////
-				if (acceptLine(ro))
-				{
-					for (size_t index = 0; index < ro->pointsX.size(); ++index)
-					{
-						int64_t roId = calcRouteId(ro, index);
-						if (excludeDuplications.count(roId) == 0) {
-							excludeDuplications.insert(roId);
-							if (x31 == ro->pointsX[index] && y31 == ro->pointsY[index])
-							{
-								SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, index));
-								s->next = original;
-								original = 	s;
-							}
-						}
-					}
-				}
-			}
-		}
-#else
 		// Second search on map info.
 		//// Memo pattern
 		int64_t key = ((int64_t)x31 << 31) + y31;
@@ -334,9 +303,9 @@ public:
 			timeToLoad.Pause();
 			for (int i = objects.size()-1; i >= 0; --i)
 			{
-				if (objects[i] != NULL)
+				RouteDataObject_pointer const & ro(objects[i]);
+				if (ro != nullptr)
 				{
-					SHARED_PTR<RouteDataObject> ro(new RouteDataObject(*(objects[i])));////
 					if (acceptLine(ro))
 						add(ro, x31, y31);
 				}
@@ -351,17 +320,23 @@ if (segment == NULL) std::cerr << "loadSegment(" << x31 << ',' << y31 << ")=NULL
 			int64_t roId = calcRouteId(ro, sStart);
 			if (excludeDuplications.count(roId) == 0) {
 				excludeDuplications.insert(roId);
+				// TODO Avoid this copies
+				// Dued to registered. A container could be better than a linked structure.
 				SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, sStart));
 				s->next = original;
 				original = 	s;
 			}
 			segment = segment->next;
 		}
-#endif
 ////std::cerr << "loadRS original->id " << original->road->id << std::endl;
 //		timer.Pause();
 //		std::cerr << "NAT loadRS time=" << timer.GetElapsedMs() << std::endl;
 		return original;
+	}
+
+	size_t loadedRoads() const
+	{
+		return loadedRDO.size();
 	}
 
 	void loadRoad(SHARED_PTR<RouteDataObject> const & roadToLoad)
@@ -385,9 +360,9 @@ if (segment == NULL) std::cerr << "loadSegment(" << x31 << ',' << y31 << ")=NULL
 		timeToLoad.Pause();
 		for (int i = objects.size()-1; i >= 0; --i)
 		{
-			if (objects[i] != NULL)
+			RouteDataObject_pointer const & ro(objects[i]);
+			if (ro != nullptr)
 			{
-				SHARED_PTR<RouteDataObject> ro(new RouteDataObject(*(objects[i])));////
 				if (acceptLine(ro))
 				{
 					add(ro, b);

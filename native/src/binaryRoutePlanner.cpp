@@ -643,7 +643,8 @@ void searchRouteInternal(RoutingContext* ctx,
 			ctx-> visitedSegments, visitedDirectSegments.size(), visitedReverseSegments.size(),
 			graphDirectSegments.size(),graphReverseSegments.size());
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Result timing (time to load %d, time to calc %d, loaded tiles %d) ",
-			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedTiles);
+//			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedTiles);
+			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedRoads());
 	int sz = calculateSizeOfSearchMaps(graphDirectSegments, graphReverseSegments, visitedDirectSegments, visitedReverseSegments);
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
 }
@@ -944,7 +945,8 @@ void _searchRouteInternal(RoutingContext* ctx,
 			ctx->visitedSegments, visitedSegments.size(), 0,
 			graphSegments.size(),0);
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Result timing (time to load %d, time to calc %d, loaded tiles %d) ",
-			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedTiles);
+//			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedTiles);
+			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedRoads());
 	int sz = calculateSizeOfSearchMaps(graphSegments, SEGMENTS_QUEUE(sgmCmp), visitedSegments, VISITED_MAP());
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
 }
@@ -959,20 +961,20 @@ SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx)
 	RoutingQuery(b, dataObjects);
 
 	// Candidate
-	RouteDataObject const * road = NULL;
+	RouteDataObject_pointer road;
 	size_t index = 0;
 	int candidateX = -1;
 	int candidateY = -1;
 	double sdist = 0;
 	RouteDataObjects_t::const_iterator it = dataObjects.begin();
 	for (; it!= dataObjects.end(); it++) {
-		RouteDataObject * r = *it;
-		if (r == NULL or !ctx->acceptLine(SHARED_PTR<RouteDataObject>(new RouteDataObject(*r))))////
+		RouteDataObject_pointer const & r = *it;
+		if (r == nullptr or !ctx->acceptLine(r))
 		{
 if (TRACE_ROUTING)
 {
 std::cerr << "FindRS NAT ";
-	if (r==NULL)
+	if (r == nullptr)
 		std::cerr << "NULL";
 	else
 		std::cerr << r->id << " NOT accepted";
@@ -987,7 +989,7 @@ std::cerr << std::endl;
 					px, py);
 			// Both distance and squared distance (we use) are monotone and positive functions.
 			double currentsDist = squareDist31TileMetric(pr.first, pr.second, px, py);
-			if (currentsDist < sdist || road == NULL) {
+			if (currentsDist < sdist || road == nullptr) {
 				// New candidate
 				road = r;
 				index = j;
@@ -998,7 +1000,7 @@ std::cerr << std::endl;
 			}
 		}
 	}
-	if (road != NULL) {
+	if (road != nullptr) {
 		/*** Always add a new point to road to allow 'RoutePlannerFrontEnd.searchRoute' postprocessing.
 		if ((candidateX == road->pointsX[index-1]) && (candidateY == road->pointsY[index-1]))
 		{
@@ -1024,7 +1026,7 @@ std::cerr << std::endl;
 //		std::cerr << "NAT findRS time=" << timer.GetElapsedMs() << std::endl;
 		return SHARED_PTR<RouteSegment>(new RouteSegment(proj, index));
 	}
-	return NULL;
+	return nullptr;
 }
 
 bool combineTwoSegmentResult(RouteSegmentResult const & toAdd, RouteSegmentResult& previous) {

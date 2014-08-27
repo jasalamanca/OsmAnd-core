@@ -196,7 +196,7 @@ OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "idTables[%d] = %d", idTables
 }
 ****/
 
-void searchRouteDataForSubRegion(SearchQuery const * q, std::vector<RouteDataObject*>& list,
+void searchRouteDataForSubRegion(SearchQuery const * q, RouteDataObjects_t & list,
 		RouteSubregion const & sub)
 {
 	std::map<std::string, BinaryMapFile*>::const_iterator i = openFiles.begin();
@@ -572,9 +572,10 @@ bool readRouteTreeData(CodedInputStream & input, RouteSubregion & output, Routin
 		switch (WireFormatLite::GetTagFieldNumber(tag))
 		{
 		case OsmAndRoutingIndex_RouteDataBlock::kDataObjectsFieldNumber:
-			{
-			RouteDataObject* obj = new RouteDataObject;
-			readRouteDataObject(input, obj, output);
+		{
+			RouteDataObject_pointer obj = RouteDataObject_pointer(new RouteDataObject);
+			// map reading routines will do a safe use of base pointer.
+			readRouteDataObject(input, obj.get(), output);
 			if (dataObjects.size() <= obj->id ) {
 				dataObjects.resize(obj->id + 1, NULL);//normally dataobject come ordered resize???
 //OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "id %d cap %d", obj->id, dataObjects.capacity());
@@ -602,7 +603,7 @@ bool readRouteTreeData(CodedInputStream & input, RouteSubregion & output, Routin
 	// Moving restrictions to DataObjects
 	Restrictions_t::const_iterator itRestrictions = restrictions.begin();
 	for (; itRestrictions != restrictions.end(); itRestrictions++) {
-		RouteDataObject* fromr = dataObjects[itRestrictions->first]; // avoid using []
+		RouteDataObject_pointer & fromr = dataObjects[itRestrictions->first]; // avoid using []
 		if (fromr != NULL) {
 			fromr->restrictions = itRestrictions->second;
 			for (size_t i = 0; i < fromr->restrictions.size(); i++) {

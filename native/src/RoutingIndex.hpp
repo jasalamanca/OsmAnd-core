@@ -34,8 +34,8 @@
 #include <Logging.h>
 
 // Full response type
-//TODO typedef std::vector<RouteDataObject> RouteDataObjects_t;
-typedef std::vector<RouteDataObject *> RouteDataObjects_t;
+typedef std::shared_ptr<RouteDataObject> RouteDataObject_pointer;
+typedef std::vector<RouteDataObject_pointer> RouteDataObjects_t;
 
 struct RouteDataObject {
 	RoutingIndex* region;
@@ -171,12 +171,6 @@ struct RouteDataObject {
 		return def;
 	}
 
-	void query(bbox_t const & b, RouteDataObjects_t & result) const
-	{
-		if (boost::geometry::intersects(b, Box()))
-			result.push_back(const_cast<RouteDataObject *>(this));
-	}
-
 	bbox_t const & Box() const
 	{
 		return box;
@@ -223,11 +217,13 @@ struct RouteSubregion
 
 		// THINK: Maybe using boost::function to do only 1 call (one of them do nothing)
 		for_each(subregions,
-				 [&b, &result](RouteSubregion const & node){node.query(b, result);});
+				[&b, &result](RouteSubregion const & node){node.query(b, result);});
 		for_each(dataObjects,
-				[&b, &result](RouteDataObject const * obj){if (obj != NULL) obj->query(b, result);});
-//// TODO add boxes to DataObject and propagate query to DataObjects.
-////		copy(dataObjects, std::back_inserter(result));
+				[&b, &result](RouteDataObject_pointer obj)
+					{
+			if ((obj != nullptr) && intersects(b, obj->Box()))
+				result.push_back(obj);
+					});
 	}
 
 	// TODO Remove as soon as possible

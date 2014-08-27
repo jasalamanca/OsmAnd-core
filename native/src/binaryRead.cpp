@@ -25,9 +25,9 @@ using google::protobuf::io::CodedInputStream;
 using google::protobuf::io::FileInputStream;
 using google::protobuf::internal::WireFormatLite;
 
-static uint zoomForBaseRouteRendering  = 14;
-static uint detailedZoomStart = 13;
-static uint zoomOnlyForBasemaps  = 11;
+static int zoomForBaseRouteRendering  = 14;
+static int detailedZoomStart = 13;
+static int zoomOnlyForBasemaps  = 11;
 std::map< std::string, BinaryMapFile* > openFiles;
 OsmAndStoredIndex* cache = NULL;
 
@@ -156,12 +156,12 @@ void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & b
 }
 
 // Only for searchNativeObjectsForRendering
-void convertRouteDataObjecToMapObjects(SearchQuery* q, std::vector<RouteDataObject*> const & list,
+void convertRouteDataObjecToMapObjects(SearchQuery* q, RouteDataObjects_t const & list,
 		std::vector<MapDataObject*>& tempResult, bool skipDuplicates, IDS_SET& ids, int& renderedState) {
-	std::vector<RouteDataObject*>::const_iterator rIterator = list.begin();
+	RouteDataObjects_t::const_iterator rIterator = list.begin();
 	tempResult.reserve((size_t) (list.size() + tempResult.size()));
 	for (; rIterator != list.end(); rIterator++) {
-		RouteDataObject const * r = (*rIterator);
+		RouteDataObject_pointer r = (*rIterator);
 		if(r == NULL) {
 			continue;
 		}
@@ -204,7 +204,7 @@ void convertRouteDataObjecToMapObjects(SearchQuery* q, std::vector<RouteDataObje
 		} else {
 			delete obj;
 		}
-		delete r;
+		////delete r;
 	}
 }
 

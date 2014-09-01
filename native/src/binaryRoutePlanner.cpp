@@ -492,36 +492,18 @@ void searchRouteInternal(RoutingContext* ctx,
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
 }
 
+#ifdef UNI_REF_ALGO
 bool _checkSolution(RoutingContext* ctx,
 		SHARED_PTR<RouteSegment> const & segment, int segmentEnd, int endX, int endY)
 {
 	if (segment->road->pointsX[segmentEnd] == endX
 			&& segment->road->pointsY[segmentEnd] == endY)
 	{
-			SHARED_PTR<FinalRouteSegment> frs = SHARED_PTR<FinalRouteSegment>(new FinalRouteSegment);
-			frs->direct = segment;
-			frs->reverseWaySearch = false;
-			SHARED_PTR<RouteSegment> op = SHARED_PTR<RouteSegment>(new RouteSegment(segment->road, segmentEnd));
-			frs->opposite = op;
-			frs->distanceFromStart = segment->distanceFromStart;
-
-			ctx->finalRouteSegment = frs;
-			return true;
-	}
-	return false;
-}
-
-bool _checkSolution(RoutingContext* ctx,
-		SHARED_PTR<RouteSegment> const & segment, SHARED_PTR<RouteSegment> const & end)
-{
-	// If end reached we are the champions
-	if (segment->road->id == end->road->id
-		&& segment->segmentStart == end->segmentStart)
-	{
 		SHARED_PTR<FinalRouteSegment> frs = SHARED_PTR<FinalRouteSegment>(new FinalRouteSegment);
 		frs->direct = segment;
 		frs->reverseWaySearch = false;
-		frs->opposite = end;
+		SHARED_PTR<RouteSegment> op = SHARED_PTR<RouteSegment>(new RouteSegment(segment->road, segmentEnd));
+		frs->opposite = op;
 		frs->distanceFromStart = segment->distanceFromStart;
 
 		ctx->finalRouteSegment = frs;
@@ -754,7 +736,7 @@ void _searchRouteInternal(RoutingContext* ctx,
 		// Select node with minimal f(x)
 		SHARED_PTR<RouteSegment> segment = graphSegments.top();
 
-		if (_checkSolution(ctx, segment, end)) break; // Solution found
+		if (_checkSolution(ctx, segment, segment->segmentStart, targetEndX, targetEndY)) break; // Solution found
 
 		// Remove from openset
 		graphSegments.pop();
@@ -788,6 +770,7 @@ void _searchRouteInternal(RoutingContext* ctx,
 	int sz = calculateSizeOfSearchMaps(graphSegments, SEGMENTS_QUEUE(sgmCmp), visitedSegments, VISITED_MAP());
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
 }
+#endif
 
 #include <boost/range/adaptor/filtered.hpp>
 void RoutingQuery(bbox_t & b, RouteDataObjects_t & output);
@@ -991,10 +974,13 @@ std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool le
 		}
 	}
 
+#ifndef UNI_REF_ALGO
 	// Bidirectional search
 	searchRouteInternal(ctx, start, end, leftSideNavigation);
+#else
 	// Unidirectional search
-	//_searchRouteInternal(ctx, start, end);
+	_searchRouteInternal(ctx, start, end);
+#endif // UNI_REF_ALGO
 	std::vector<RouteSegmentResult> res = convertFinalSegmentToResults(ctx);
 	attachConnectedRoads(ctx, res);
 	return res;

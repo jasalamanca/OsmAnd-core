@@ -1,10 +1,10 @@
 #include "Common.h"
-#include <queue>
-#include <iostream>
 #include "RoutingContext.hpp"
 #include "RouteSegment.hpp"
 #include "RouteCalculationProgress.hpp"
 
+#include <queue>
+#include <iostream>
 #include "Logging.h"
 
 static const int ROUTE_POINTS = 11;
@@ -772,89 +772,6 @@ void _searchRouteInternal(RoutingContext* ctx,
 }
 #endif
 
-#include <boost/range/adaptor/filtered.hpp>
-void RoutingQuery(bbox_t & b, RouteDataObjects_t & output);
-SHARED_PTR<RouteSegment> findRouteSegment(int px, int py, RoutingContext* ctx)
-{
-	bbox_t b(point_t(px,py), point_t(px,py));
-	RouteDataObjects_t dataObjects;
-	RoutingQuery(b, dataObjects);
-
-	auto range = boost::adaptors::filter(dataObjects,
-					[&ctx](RouteDataObject_pointer const & rdo){return rdo != nullptr && ctx->acceptLine(rdo);});
-	if (range.begin() == range.end())
-	{
-		// A second try.
-		b = boost::geometry::make<bbox_t>(px-20000, py-20000, px+20000, py+20000);
-		RoutingQuery(b, dataObjects);
-	}
-	// Candidate
-	RouteDataObject_pointer road;
-	size_t index = 0;
-	int candidateX = -1;
-	int candidateY = -1;
-	double sdist = 0;
-	RouteDataObjects_t::const_iterator it = dataObjects.begin();
-	for (; it!= dataObjects.end(); it++) {
-		RouteDataObject_pointer const & r = *it;
-		if (r == nullptr or !ctx->acceptLine(r))
-		{
-if (TRACE_ROUTING)
-{
-std::cerr << "FindRS NAT ";
-	if (r == nullptr)
-		std::cerr << "NULL";
-	else
-		std::cerr << r->id << " NOT accepted";
-std::cerr << std::endl;
-}
-			continue;
-		}
-		for (size_t j = 1; j < r->pointsX.size(); ++j) {
-			// (px, py) projection over (j-1)(j) segment
-			std::pair<int, int> pr = calculateProjectionPoint31(r->pointsX[j-1], r->pointsY[j-1],
-					r->pointsX[j], r->pointsY[j],
-					px, py);
-			// Both distance and squared distance (we use) are monotone and positive functions.
-			double currentsDist = squareDist31TileMetric(pr.first, pr.second, px, py);
-			if (currentsDist < sdist || road == nullptr) {
-				// New candidate
-				road = r;
-				index = j;
-				candidateX = pr.first;
-				candidateY = pr.second;
-				sdist = currentsDist;
-//std::cerr << "FindRS candidate " << road->id << "[" << index << "]=(" << candidateX << ',' << candidateY << ") dist=" << sdist << std::endl;
-			}
-		}
-	}
-	if (road != nullptr) {
-		/*** Always add a new point to road to allow 'RoutePlannerFrontEnd.searchRoute' postprocessing.
-		if ((candidateX == road->pointsX[index-1]) && (candidateY == road->pointsY[index-1]))
-		{
-			// Projection has same coordinates. None new.
-			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index-1);
-		}
-		if ((candidateX == road->pointsX[index]) && (candidateY == road->pointsY[index]))
-		{
-			// Projection has same coordinates. None new.
-			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index);
-		}
-		***/
-
-		SHARED_PTR<RouteDataObject> proj = SHARED_PTR<RouteDataObject>(new RouteDataObject(*road));
-		proj->pointsX.insert(proj->pointsX.begin() + index, candidateX);
-		proj->pointsY.insert(proj->pointsY.begin() + index, candidateY);
-		if (proj->pointTypes.size() > index) {
-			proj->pointTypes.insert(proj->pointTypes.begin() + index, std::vector<uint32_t>());
-		}
-		// re-register the best road because one more point was inserted
-		ctx->registerRouteDataObject(proj);
-		return SHARED_PTR<RouteSegment>(new RouteSegment(proj, index));
-	}
-	return nullptr;
-}
-
 bool combineTwoSegmentResult(RouteSegmentResult const & toAdd, RouteSegmentResult& previous) {
 	bool ld = previous.endPointIndex > previous.startPointIndex;
 	bool rd = toAdd.endPointIndex > toAdd.startPointIndex;
@@ -942,7 +859,7 @@ std::vector<RouteSegmentResult> convertFinalSegmentToResults(RoutingContext* ctx
 }
 
 std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool leftSideNavigation) {
-	SHARED_PTR<RouteSegment> start = findRouteSegment(ctx->startX, ctx->startY, ctx);
+	SHARED_PTR<RouteSegment> start = ctx->findRouteSegment(ctx->startX, ctx->startY);
 	if (start == NULL) {
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "Start point was not found [Native]");
 		if (ctx->progress != NULL) {
@@ -952,7 +869,7 @@ std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool le
 	} else {
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "Start point was found %lld [Native]", start->road->id);
 	}
-	SHARED_PTR<RouteSegment> end = findRouteSegment(ctx->targetX, ctx->targetY, ctx);
+	SHARED_PTR<RouteSegment> end = ctx->findRouteSegment(ctx->targetX, ctx->targetY);
 	if (end == NULL) {
 		if(ctx->progress != NULL) {
 			ctx->progress->setSegmentNotFound(1);

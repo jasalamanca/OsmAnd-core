@@ -8,22 +8,97 @@
 #include <iostream>
 #include "RoutingContext.hpp"
 
-void RoutingQuery(bbox_t & b, RouteDataObjects_t & output);
+#include "common2.h"
+#include <boost/range/adaptor/filtered.hpp>
 
-void RoutingContext::add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b)
+void RoutingQuery(bbox_t & b, RouteDataObjects_t & output);
+//extern const bool TRACE_ROUTING;
+
+SHARED_PTR<RouteSegment> RoutingContext::findRouteSegment(uint32_t x31, uint32_t y31)
 {
-	connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
-	for (int i = o->pointsX.size()-1; i >= 0; --i)
+	bbox_t b = boost::geometry::make<bbox_t>(x31-100, y31-100, x31+100, y31+100);
+	RouteDataObjects_t dataObjects;
+	RoutingQuery(b, dataObjects);
+
+	auto filter = [this](RouteDataObject_pointer const & rdo)
+			{
+		return rdo != nullptr && acceptLine(rdo);
+			};
+	auto range = boost::adaptors::filter(dataObjects, filter);
+	if (range.begin() == range.end())
 	{
-		uint32_t x31 = o->pointsX[i];
-		uint32_t y31 = o->pointsY[i];
-		if (!boost::geometry::covered_by(point_t(x31, y31), b)) continue;
-		int64_t l = makeKey(x31, y31);
-		SHARED_PTR<RouteSegment> segment = SHARED_PTR<RouteSegment>(new RouteSegment(o, i));
-		if (connections.count(l) != 0)
-			segment->next = connections[l];
-		connections[l] = segment;
+		// A second try.
+		b = boost::geometry::make<bbox_t>(x31-20000, y31-20000, x31+20000, y31+20000);
+		RoutingQuery(b, dataObjects);
 	}
+	// Candidate
+	RouteDataObject_pointer road;
+	size_t index = 0;
+	int candidateX = -1;
+	int candidateY = -1;
+	double sdist = 0;
+	RouteDataObjects_t::const_iterator it = dataObjects.begin();
+	for (; it!= dataObjects.end(); it++) {
+		RouteDataObject_pointer const & r = *it;
+		if (!filter(r))
+		{
+//if (TRACE_ROUTING)
+//{
+//std::cerr << "FindRS NAT ";
+//if (r == nullptr)
+//	std::cerr << "NULL";
+//else
+//	std::cerr << r->id << " NOT accepted";
+//std::cerr << std::endl;
+//}
+			continue;
+		}
+		for (size_t j = 1; j < r->pointsX.size(); ++j)
+		{
+			// (px, py) projection over (j-1)(j) segment
+			std::pair<int, int> pr = calculateProjectionPoint31(r->pointsX[j-1], r->pointsY[j-1],
+					r->pointsX[j], r->pointsY[j],
+					x31, y31);
+			// Both distance and squared distance (we use) are monotone and positive functions.
+			double currentsDist = squareDist31TileMetric(pr.first, pr.second, x31, y31);
+			if (currentsDist < sdist || road == nullptr)
+			{
+				// New candidate
+				road = r;
+				index = j;
+				candidateX = pr.first;
+				candidateY = pr.second;
+				sdist = currentsDist;
+//std::cerr << "FindRS candidate " << road->id << "[" << index << "]=(" << candidateX << ',' << candidateY << ") dist=" << sdist << std::endl;
+			}
+		}
+	}
+	if (road != nullptr)
+	{
+		/*** Always add a new point to road to allow 'RoutePlannerFrontEnd.searchRoute' postprocessing.
+		if ((candidateX == road->pointsX[index-1]) && (candidateY == road->pointsY[index-1]))
+		{
+			// Projection has same coordinates. None new.
+			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index-1);
+		}
+		if ((candidateX == road->pointsX[index]) && (candidateY == road->pointsY[index]))
+		{
+			// Projection has same coordinates. None new.
+			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index);
+		}
+		***/
+
+		SHARED_PTR<RouteDataObject> proj = SHARED_PTR<RouteDataObject>(new RouteDataObject(*road));
+		proj->pointsX.insert(proj->pointsX.begin() + index, candidateX);
+		proj->pointsY.insert(proj->pointsY.begin() + index, candidateY);
+		if (proj->pointTypes.size() > index) {
+			proj->pointTypes.insert(proj->pointTypes.begin() + index, std::vector<uint32_t>());
+		}
+		// re-register the best road because one more point was inserted
+		registerRouteDataObject(proj);
+		return SHARED_PTR<RouteSegment>(new RouteSegment(proj, index));
+	}
+	return nullptr;
 }
 
 SHARED_PTR<RouteSegment> RoutingContext::loadRouteSegment(uint32_t x31, uint32_t y31)
@@ -75,6 +150,22 @@ SHARED_PTR<RouteSegment> RoutingContext::loadRouteSegment(uint32_t x31, uint32_t
 		segment = segment->next;
 	}
 	return original;
+}
+
+void RoutingContext::add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b)
+{
+	connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
+	for (int i = o->pointsX.size()-1; i >= 0; --i)
+	{
+		uint32_t x31 = o->pointsX[i];
+		uint32_t y31 = o->pointsY[i];
+		if (!boost::geometry::covered_by(point_t(x31, y31), b)) continue;
+		int64_t l = makeKey(x31, y31);
+		SHARED_PTR<RouteSegment> segment = SHARED_PTR<RouteSegment>(new RouteSegment(o, i));
+		if (connections.count(l) != 0)
+			segment->next = connections[l];
+		connections[l] = segment;
+	}
 }
 
 void RoutingContext::loadMap(int x31, int y31)

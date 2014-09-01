@@ -28,6 +28,7 @@ public:
 	}
 
 	// Public interface
+	SHARED_PTR<RouteSegment> findRouteSegment(uint32_t x31, uint32_t y31);
 	SHARED_PTR<RouteSegment> loadRouteSegment(uint32_t x31, uint32_t y31);
 
 public:
@@ -72,7 +73,6 @@ private:
 	}
 	void loadMap(int x31, int y31);
 	void add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b);
-public:
 	bool acceptLine(SHARED_PTR<RouteDataObject> const & r) const
 	{
 		return config.router.acceptLine(r);

@@ -605,6 +605,14 @@ void MapQuery(SearchQuery & q/*, MapDataObjects_t & output*/)
 
 void RoutingQuery(bbox_t & b, RouteDataObjects_t & output)
 {
+	// FIXME To avoid typical errors between subRegion read coordinates and what would really be.
+	// Expand 30 unit around real box.
+	// Previous code loaded tile by tile. That reduced the impact of that bug but the bug remains.
+	// Correct solution implies to calculate boxes bottom-up and update, extending incorrect ones,
+	// which conflicts with lazy reading of map files.
+	b = boost::geometry::make<bbox_t>(b.min_corner().x()-30, b.min_corner().y()-30,
+			b.max_corner().x()+30, b.max_corner().y()+30);
+
 	using boost::range::for_each;
 	for_each(openFiles, [&b, &output](std::pair<std::string, BinaryMapFile *> const & fp)
 			{

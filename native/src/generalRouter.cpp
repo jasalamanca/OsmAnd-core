@@ -1,11 +1,10 @@
 #ifndef _OSMAND_GENERAL_ROUTER_CPP
 #define _OSMAND_GENERAL_ROUTER_CPP
+
 #include "generalRouter.h"
-#include "binaryRoutePlanner.h"
-#include <sstream>
+
 const int RouteAttributeExpression::LESS_EXPRESSION = 1;
 const int RouteAttributeExpression::GREAT_EXPRESSION = 1;
-
 
 float parseFloat(MAP_STR_STR & attributes, std::string const & key, float def) {
 	if(attributes.find(key) != attributes.end() && attributes[key] != "") {

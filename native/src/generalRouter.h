@@ -2,16 +2,11 @@
 #define _OSMAND_GENERAL_ROUTER_H
 
 #include "Common.h"
-#include "common2.h"
-#include <algorithm>
 #include "boost/dynamic_bitset.hpp"
-#include "Logging.h"
-//#include "binaryRead.h"
 #include "RoutingIndex.hpp"
+#include "RouteSegment.hpp"
 
-struct RouteSegment;
 class GeneralRouter;
-class RouteAttributeContext;
 
 typedef UNORDERED(map)<std::string, float> MAP_STR_FLOAT;
 typedef UNORDERED(map)<std::string, std::string> MAP_STR_STR;
@@ -21,6 +16,7 @@ typedef boost::dynamic_bitset<> dynbitset;
 
 #define DOUBLE_MISSING -1.1e9 // random big negative number
 
+#include "Logging.h"
 
 enum class RouteDataObjectAttribute : unsigned int {
 	ROAD_SPEED = 0, //"speed"

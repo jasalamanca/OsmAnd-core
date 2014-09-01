@@ -1,4 +1,8 @@
+#include <iostream>
 #include "java_wrap.h"
+
+#include "RouteSegment.hpp"
+#include "RoutingContext.hpp"
 #ifdef ANDROID_BUILD
 #include <dlfcn.h>
 #endif
@@ -10,7 +14,6 @@
 #include "Common.h"
 #include "binaryRead.h"
 #include "rendering.h"
-#include "binaryRoutePlanner.h"
 #include "Logging.h"
 
 JavaVM* globalJVM = NULL;
@@ -965,10 +968,12 @@ void parseRouteConfiguration(JNIEnv* ienv, RoutingConfiguration& rConfig, jobjec
 
 }
 
+std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool leftSideNavigation);
 extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRouting(JNIEnv* ienv,
 		jobject obj, 
 		jintArray  coordinates, jobject jRouteConfig, jfloat initDirection,
-		jobjectArray regions, jobject progress, jobject precalculatedRoute, bool basemap) {
+		jobjectArray regions, jobject progress, jobject precalculatedRoute, bool basemap)
+{
 	RoutingConfiguration config(initDirection);
 	parseRouteConfiguration(ienv, config, jRouteConfig);
 	RoutingContext c(config);
@@ -978,7 +983,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRo
 	c.startY = data[1];
 	c.targetX = data[2];
 	c.targetY = data[3];
-	c.basemap = basemap;
+	////c.basemap = basemap;
 	parsePrecalculatedRoute(ienv, c, precalculatedRoute);
 	ienv->ReleaseIntArrayElements(coordinates, (jint*)data, 0);
 	std::vector<RouteSegmentResult> r = searchRouteInternal(&c, false);
@@ -1002,7 +1007,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRo
 		ienv->SetFloatField(progress, jfield_RouteCalculationProgress_routingCalculatedTime, c.finalRouteSegment->distanceFromStart);
 	}
 	ienv->SetIntField(progress, jfield_RouteCalculationProgress_visitedSegments, c.visitedSegments);
-	ienv->SetIntField(progress, jfield_RouteCalculationProgress_loadedTiles, c.loadedTiles);
+	ienv->SetIntField(progress, jfield_RouteCalculationProgress_loadedTiles, c.loadedMapChunks());////loadedTiles);
 	if (r.empty()) {
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "No route found");
 	}

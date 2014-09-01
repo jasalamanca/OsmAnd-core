@@ -63,11 +63,11 @@ public:
 typedef UNORDERED(map)<int64_t, SHARED_PTR<RouteSegment> > VISITED_MAP;
 typedef std::priority_queue<SHARED_PTR<RouteSegment>, std::vector<SHARED_PTR<RouteSegment> >, SegmentsComparator > SEGMENTS_QUEUE;
 
-int calculateSizeOfSearchMaps(SEGMENTS_QUEUE const & graphDirectSegments,
+size_t calculateSizeOfSearchMaps(SEGMENTS_QUEUE const & graphDirectSegments,
 		SEGMENTS_QUEUE const & graphReverseSegments,
 		VISITED_MAP const & visitedDirectSegments, VISITED_MAP const & visitedOppositeSegments)
 {
-	int sz = visitedDirectSegments.size() * sizeof(std::pair<int64_t, SHARED_PTR<RouteSegment> > );
+	size_t sz = visitedDirectSegments.size() * sizeof(std::pair<int64_t, SHARED_PTR<RouteSegment> > );
 	sz += visitedOppositeSegments.size()*sizeof(std::pair<int64_t, SHARED_PTR<RouteSegment> >);
 	sz += graphDirectSegments.size()*sizeof(SHARED_PTR<RouteSegment>);
 	sz += graphReverseSegments.size()*sizeof(SHARED_PTR<RouteSegment>);
@@ -486,10 +486,9 @@ void searchRouteInternal(RoutingContext* ctx,
 			ctx-> visitedSegments, visitedDirectSegments.size(), visitedReverseSegments.size(),
 			graphDirectSegments.size(),graphReverseSegments.size());
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Result timing (time to load %d, time to calc %d, loaded tiles %d) ",
-////MOVE//			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedTiles);
 			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedMapChunks());
 	int sz = calculateSizeOfSearchMaps(graphDirectSegments, graphReverseSegments, visitedDirectSegments, visitedReverseSegments);
-	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
+	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->memorySize()/1024, sz/1024);
 }
 
 #ifdef UNI_REF_ALGO
@@ -765,10 +764,9 @@ void _searchRouteInternal(RoutingContext* ctx,
 			ctx->visitedSegments, visitedSegments.size(), 0,
 			graphSegments.size(),0);
 	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Result timing (time to load %d, time to calc %d, loaded tiles %d) ",
-////MOVE//			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedTiles);
 			ctx->timeToLoad.GetElapsedMs(), ctx->timeToCalculate.GetElapsedMs(), ctx->loadedMapChunks());
 	int sz = calculateSizeOfSearchMaps(graphSegments, SEGMENTS_QUEUE(sgmCmp), visitedSegments, VISITED_MAP());
-	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->getSize()/1024, sz/1024);
+	OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "[Native] Memory occupied (Routing context %d Kb, search %d Kb)", ctx->memorySize()/1024, sz/1024);
 }
 #endif
 

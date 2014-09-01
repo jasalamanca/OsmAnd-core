@@ -22,7 +22,6 @@ public:
 	RoutingContext(RoutingConfiguration& config)
 		: visitedSegments(0),//// loadedTiles(0),
 		  config(config), finalRouteSegment()
-		  , connections_size(0)
 	{
 		precalcRoute.empty = true;
 	}
@@ -60,7 +59,6 @@ private:
 	UNORDERED(set)<int64_t> loaded;
 	// To memo connections between roads.
 	UNORDERED(map)<int64_t, SHARED_PTR<RouteSegment> > connections;
-	size_t connections_size;
 
 private:
 	// Map related
@@ -82,9 +80,13 @@ private:
 
 public:
 	// Counters
-	size_t getSize() const
+	size_t memorySize() const
 	{
-		return connections_size;
+		return sizeof(RoutingContext)
+				+ registered.capacity() * (sizeof(RouteDataObject) + sizeof(RouteDataObject_pointer))
+				+ loaded.size() * sizeof(int64_t)
+				+ connections.size() * (sizeof(std::pair<int64_t, std::shared_ptr<RouteSegment> >) + sizeof(RouteSegment))
+				+ RoutingMemorySize();
 	}
 
 	inline size_t loadedMapChunks() const

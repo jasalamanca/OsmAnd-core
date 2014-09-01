@@ -63,9 +63,9 @@ struct RouteDataObject {
 		return id;
 	}
 
-	size_t getSize() const
+	size_t memorySize() const
 	{
-		int s = sizeof(this);
+		size_t s = sizeof(this);
 		s += pointsX.capacity()*sizeof(uint32_t);
 		s += pointsY.capacity()*sizeof(uint32_t);
 		s += types.capacity()*sizeof(uint32_t);
@@ -266,6 +266,17 @@ struct RouteSubregion
 		if (dataObjects.size() > 0) result.push_back(*this);
 	}
 
+	size_t memorySize() const
+	{
+		size_t sz = 0;
+		using boost::range::for_each;
+		for_each(subregions,
+				[&sz](RouteSubregion const & node){sz += node.memorySize();});
+		for_each(dataObjects,
+				[&sz](RouteDataObject_pointer const & rdo){if (rdo != nullptr) sz += rdo->memorySize();});
+		return sz;
+	}
+
 	void ContentReader(Reader_t r)
 	{
 		contentReader = r;
@@ -366,6 +377,15 @@ struct RoutingIndex : BinaryPartIndex
 		auto & rs = base?basesubregions:subregions;
 		for_each(rs,
 				 [&b, &result](RouteSubregion const & node){node.queryLeafNode(b, result);});
+	}
+
+	size_t memorySize() const
+	{
+		size_t sz = 0;
+		using boost::range::for_each;
+		for_each(subregions,
+				[&sz](RouteSubregion const & node){sz += node.memorySize();});
+		return sz;
 	}
 
 	void initRouteEncodingRule(uint32_t id, std::string const & tag, std::string const & val) {

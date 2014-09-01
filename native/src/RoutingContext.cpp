@@ -154,7 +154,6 @@ SHARED_PTR<RouteSegment> RoutingContext::loadRouteSegment(uint32_t x31, uint32_t
 
 void RoutingContext::add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b)
 {
-	connections_size += o->getSize() + sizeof(RouteSegment)* o->pointsX.size();
 	for (int i = o->pointsX.size()-1; i >= 0; --i)
 	{
 		uint32_t x31 = o->pointsX[i];

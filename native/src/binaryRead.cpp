@@ -628,3 +628,15 @@ void RoutingQuery(SearchQuery & q, RouteDataObjects_t & output)
 	bbox_t b(point_t(q.left, q.top), point_t(q.right, q.bottom));
 	RoutingQuery(b, output);
 }
+
+size_t RoutingMemorySize()
+{
+	size_t sz = 0;
+	using boost::range::for_each;
+	for_each(openFiles, [&sz](std::pair<std::string, BinaryMapFile *> const & fp)
+			{
+		BinaryMapFile const * file = fp.second;
+		for_each(file->routingIndexes, [&sz](RoutingIndex const * index){sz += index->memorySize();});
+			});
+	return sz;
+}

@@ -134,4 +134,6 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName);
 bool initMapFilesFromCache(std::string const & inputName) ;
 bool closeBinaryMapFile(std::string const & inputName);
 
+size_t RoutingMemorySize();
+
 #endif

@@ -22,7 +22,7 @@
 #endif
 
 #include "Map.hpp"
-#include "binaryRead.h"
+#include "BinaryIndex.hpp"
 
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/geometry/algorithms/equals.hpp>////
@@ -33,10 +33,7 @@
 
 #include <Logging.h>
 
-// Full response type
-typedef std::shared_ptr<RouteDataObject> RouteDataObject_pointer;
-typedef std::vector<RouteDataObject_pointer> RouteDataObjects_t;
-
+struct RoutingIndex;
 struct RouteDataObject {
 	RoutingIndex* region;
 	std::vector<uint32_t> types ;
@@ -183,6 +180,10 @@ struct RouteDataObject {
 private:
 	bbox_t box;
 };
+
+// Full response type
+typedef std::shared_ptr<RouteDataObject> RouteDataObject_pointer;
+typedef std::vector<RouteDataObject_pointer> RouteDataObjects_t;
 
 struct RouteSubregion
 {

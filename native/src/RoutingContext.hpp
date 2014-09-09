@@ -15,6 +15,7 @@
 #include "RoutingConfiguration.hpp"
 #include "RouteSegment.hpp"
 #include "RouteCalculationProgress.hpp"
+size_t RoutingMemorySize();
 
 struct RoutingContext
 {

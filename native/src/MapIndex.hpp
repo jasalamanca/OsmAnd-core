@@ -10,8 +10,9 @@
 
 #include <vector>
 #include "mapObjects.h"
-#include "binaryRead.h"
 #include "Map.hpp"
+#include "BinaryIndex.hpp"
+#include "SearchQuery.hpp"
 
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/range/algorithm/for_each.hpp>
@@ -44,6 +45,7 @@ struct MapTreeBounds
 
 	inline void query(SearchQuery & q, MapDataObjects_t & result) const
 	{
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, "query");
 		if (q.publisher->isCancelled())
 		{
 			result.clear();
@@ -55,7 +57,7 @@ struct MapTreeBounds
 		else
 			q.mixed = true;
 		//
-		bbox_t b(point_t(q.left, q. top), point_t(q.right, q.bottom));
+		bbox_t b = boost::geometry::make<bbox_t>(q.left, q.top, q.right, q.bottom);
 		query(b, result);
 	}
 
@@ -70,8 +72,11 @@ struct MapTreeBounds
 		// I can't say anything
 		if (!intersects(b, box))
 			return;
-
-//std::cerr << " MTB query box? " << b << " in " << box << std::endl;
+//{
+//std::ostringstream msg;
+//msg << " MTB query box? " << b << " in " << box << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, msg.str().c_str());
+//}
 		// Before using data
 		((MapTreeBounds *)this)->readContent();  // TODO cast????
 
@@ -104,8 +109,8 @@ struct MapTreeBounds
 	{
 		return box;
 	}
-private:
 
+private:
 	// Read if not yet
 	void readContent()
 	{
@@ -129,14 +134,16 @@ private:
 	Reader_t contentReader;
 };
 
-struct MapRoot: MapTreeBounds {
+struct MapRoot: MapTreeBounds
+{
 	int minZoom;
 	int maxZoom;
-////	std::vector<MapTreeBounds> bounds;
+
 	// TODO extract as algorithm and do a lazy implementation.
 	// Incrementally add results
 	void query(SearchQuery & q, MapDataObjects_t & result) const
 	{
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, "MapRoot query");
 		if (minZoom <= q.zoom && maxZoom >= q.zoom)
 		{
 			MapTreeBounds::query(q, result);

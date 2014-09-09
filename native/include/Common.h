@@ -19,4 +19,6 @@
 //    typedef UNORDERED(map)<std::string, std::string> StringToStringMap;
 //}
 
+typedef std::pair<std::string, std::string> tag_value;
+
 #endif // _OSMAND_COMMON_H_

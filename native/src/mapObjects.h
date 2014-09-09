@@ -6,7 +6,6 @@
 
 #include "Common.h"
 
-typedef std::pair<std::string, std::string> tag_value;
 typedef std::pair<int, int> int_pair;
 typedef std::vector< std::pair<int, int> > coordinates;
 

@@ -85,7 +85,6 @@ bool checkObjectBounds(SearchQuery* q, MapDataObject* o) {
 
 typedef UNORDERED(set)<long long> IDS_SET;
 
-// Only called from renderImage on MapCreator
 void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & basemapResult, std::vector<MapDataObject*>& tempResult,
 		std::vector<MapDataObject*>& coastLines, std::vector<MapDataObject*>& basemapCoastLines,
 		int& count, bool& basemapExists, int& renderRouteDataFile, bool skipDuplicates, int& renderedState) {
@@ -113,7 +112,7 @@ void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & b
 		} else if (!q->publisher->isCancelled()) {
 			bool basemap = i->second->isBasemap();
 			//readMapObjects(q, file);
-			for_each(file->mapIndexes, [&q](MapIndex const & index){ index.query(*q); });
+			for_each(file->mapIndexes, [&q](MapIndex const * index){ index->query(*q); });
 			std::vector<MapDataObject*>::const_iterator r = q->publisher->result.begin();
 			tempResult.reserve((size_t) (q->publisher->result.size() + tempResult.size()));
 
@@ -123,7 +122,8 @@ void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & b
 						continue;
 					}
 					ids.insert((*r)->id);
-				}				
+				}
+				// TODO What this check means?
 				if(basemap) {
 					if(renderedState % 2 == 0 && checkObjectBounds(q, *r)) {
 						renderedState |= 1;
@@ -155,7 +155,6 @@ void readMapObjectsForRendering(SearchQuery * q, std::vector<MapDataObject*> & b
 	}
 }
 
-// Only for searchNativeObjectsForRendering
 void convertRouteDataObjecToMapObjects(SearchQuery* q, RouteDataObjects_t const & list,
 		std::vector<MapDataObject*>& tempResult, bool skipDuplicates, IDS_SET& ids, int& renderedState) {
 	RouteDataObjects_t::const_iterator rIterator = list.begin();
@@ -233,7 +232,6 @@ void readRouteMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<RouteS
 }
 ***/
 
-// Only for searchNativeObjectsForRendering
 void readRouteDataAsMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<MapDataObject*>& tempResult,
 		bool skipDuplicates, IDS_SET& ids, int& renderedState) {
 	std::vector<RoutingIndex*>::iterator routeIndex = file->routingIndexes.begin();
@@ -263,7 +261,6 @@ void readRouteDataAsMapObjects(SearchQuery* q, BinaryMapFile* file, std::vector<
 	}
 }
 
-// Only called from renderImage on MapCreator
 ResultPublisher* searchObjectsForRendering(SearchQuery * q, bool skipDuplicates, int renderRouteDataFile,
 		std::string const & msgNothingFound, int& renderedState) {
 	int count = 0;
@@ -457,10 +454,12 @@ bool initMapStructure(CodedInputStream & input, BinaryMapFile & file)
 			break;
 		case OsmAndStructure::kMapIndexFieldNumber:
 		{
-			MapIndex mapIndex;
-			readMapIndex(input, mapIndex, file.fd);//, false);
+			// We had a problem with the time of life of mapIndex reference pased into lazy reading.
+			// Now we use dynamic memory.
+			MapIndex * mapIndex = new MapIndex();
+			readMapIndex(input, *mapIndex, file.fd);//, false);
+			file.basemap = file.basemap || mapIndex->name.find("basemap") != std::string::npos;
 			file.mapIndexes.push_back(std::move(mapIndex));
-			file.basemap = file.basemap || mapIndex.name.find("basemap") != std::string::npos;
 			break;
 		}
 		case OsmAndStructure::kRoutingIndexFieldNumber:
@@ -600,7 +599,7 @@ void MapQuery(SearchQuery & q/*, MapDataObjects_t & output*/)
 	for_each(openFiles, [&q/*, &output*/](std::pair<std::string, BinaryMapFile *> const & fp)
 			{
 		BinaryMapFile const * file = fp.second;
-		for_each(file->mapIndexes, [&q/*, &output*/](MapIndex const & index){index.query(q);});
+		for_each(file->mapIndexes, [&q/*, &output*/](MapIndex const * index){index->query(q);});
 			});
 }
 

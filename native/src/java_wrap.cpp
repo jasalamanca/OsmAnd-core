@@ -107,7 +107,6 @@ RenderingRuleSearchRequest* initSearchRequest(JNIEnv* env, jobject renderingRule
 	return res;
 }
 
-// Only called from renderImage on MapCreator
 extern "C" JNIEXPORT jlong JNICALL Java_net_osmand_NativeLibrary_searchNativeObjectsForRendering(JNIEnv* ienv,
 		jobject obj, jint sleft, jint sright, jint stop, jint sbottom, jint zoom,
 		jobject renderingRuleSearchRequest, bool skipDuplicates, int renderRouteDataFile,

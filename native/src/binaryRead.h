@@ -13,8 +13,6 @@
 #define close _close
 #endif
 
-#include "renderRules.h"
-
 ////
 class RoutingIndex;
 class RouteSubregion;
@@ -25,91 +23,22 @@ class MapTreeBounds;
 class MapRoot;
 class MapDataObject;
 
-struct ResultPublisher {
-	std::vector< MapDataObject*> result;
-
-	bool publish(MapDataObject* r) {
-		result.push_back(r);
-		return true;
-	}
-	bool publish(std::vector<MapDataObject*> const & r) {
-		result.insert(result.begin(), r.begin(), r.end());
-		return true;
-	}
-	bool isCancelled() const {
-		return false;
-	}
-	virtual ~ResultPublisher() {
-		deleteObjects(result);
-	}
-};
-
-struct SearchQuery {
-	RenderingRuleSearchRequest* req;
-	uint32_t left;
-	uint32_t right;
-	uint32_t top;
-	uint32_t bottom;
-	int zoom;
-	ResultPublisher* publisher;
-
-	bool ocean;
-	bool mixed;
-
-	uint numberOfVisitedObjects;
-	uint numberOfAcceptedObjects;
-	uint numberOfReadSubtrees;
-	uint numberOfAcceptedSubtrees;
-
-	SearchQuery(int l, int r, int t, int b, RenderingRuleSearchRequest* req, ResultPublisher* publisher) :
-			req(req), left(l), right(r), top(t), bottom(b),publisher(publisher) {
-		numberOfAcceptedObjects = numberOfVisitedObjects = 0;
-		numberOfAcceptedSubtrees = numberOfReadSubtrees = 0;
-		ocean = mixed = false;
-	}
-	SearchQuery(int l, int r, int t, int b) :
-				left(l), right(r), top(t), bottom(b) {
-	}
-
-	SearchQuery(){
-
-	}
-
-	bool publish(MapDataObject* obj) {
-		return publisher->publish(obj);
-	}
-};
-
 void deleteObjects(std::vector <MapDataObject* > & v);
 
 static const uint MAP_VERSION = 2;
 
-enum PART_INDEXES {
-	MAP_INDEX = 1,
-	POI_INDEX,
-	ADDRESS_INDEX,
-	TRANSPORT_INDEX,
-	ROUTING_INDEX,
-};
-
-struct BinaryPartIndex {
-	uint32_t length; // TODO Used to pass dataobjects to java side. We need another form to do that.
-	int filePointer; // TODO Used to pass dataobjects to java side. We need another form to do that.
-////	PART_INDEXES type;
-	std::string name;
-
-	BinaryPartIndex(PART_INDEXES tp) {}////: type(tp) {}
-};
-
-////
 #include "MapIndex.hpp"
-////
+#include "RoutingIndex.hpp"
 
 struct BinaryMapFile {
 	std::string inputName;
 	uint32_t version;
 	uint64_t dateCreated;
-	std::vector<MapIndex> mapIndexes;
+	// FIXME Introduced pointer for MapIndex because the object scope needed along lazy reading.
+	// Same thing was with RoutingIndex.
+	// Now we allocate dinamically both kinds of indexes to have correct scope.
+	// They are needed (basically) to access to index rules when reading types. Can we change this behavior??
+	std::vector<MapIndex *> mapIndexes;
 	std::vector<RoutingIndex*> routingIndexes;
 	int fd;
 	int routefd;
@@ -122,6 +51,9 @@ struct BinaryMapFile {
 	~BinaryMapFile() {
 		close(fd);
 		close(routefd);
+		using boost::range::for_each;
+		for_each(mapIndexes, [](MapIndex * p){ delete p; });
+		for_each(routingIndexes, [](RoutingIndex * p){ delete p; });
 	}
 };
 

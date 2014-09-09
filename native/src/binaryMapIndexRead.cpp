@@ -6,7 +6,6 @@
  */
 
 #include "MapIndex.hpp"
-#include "binaryRead.h"
 
 #include "proto/osmand_odb.pb.h"
 #include "proto/utils.hpp"
@@ -561,7 +560,11 @@ bool readMapTreeBoundsBase(CodedInputStream & input, MapTreeBounds & output,
 	}  // end of while
 
 	output.Box(bbox_t(point_t(output.left, output.top), point_t(output.right, output.bottom)));
-//std::cerr << "MapTreeBounds Box read " << output.Box() << std::endl;
+//{
+//std::ostringstream msg;
+//msg << "MapTreeBounds Box read " << output.Box() << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, msg.str().c_str());
+//}
 	if (objectsOffset == 0)
 	{  // An intermediate node.
 		output.ContentReader([lPos, &index, fd](MapTreeBounds & output)
@@ -750,9 +753,12 @@ bool readMapLevelBase(CodedInputStream & input, MapRoot & output,
 	} // End of while
 
 	output.Box(bbox_t(point_t(output.left, output.top), point_t(output.right, output.bottom)));
-//std::cerr << "MapRoot Box read " << output.Box() << std::endl;
+//{
+//std::ostringstream msg;
+//msg << "MapRoot Box read " << output.Box() << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, msg.str().c_str());
+//}
 	// Lazy read of nodes
-	//output.ContentReader([pos, &index, fd](MapRoot & output)
 	output.ContentReader([pos, &index, fd](MapTreeBounds & output)
 			{
 		int filed = dup(fd);
@@ -844,7 +850,11 @@ bool readMapIndex(CodedInputStream & input, MapIndex & output,
 	using boost::geometry::expand;
 	for_each(output.levels, [&box](MapRoot const & r){expand(box, r.Box());});
 	output.Box(box);
-//std::cout << "Box " << output.Box() << std::endl;
+//{
+//std::ostringstream msg;
+//msg << "Box " << output.Box() << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, msg.str().c_str());
+//}
 //OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readMI #decR %d, #levels %d",
 //			output.decodingRules.size(), output.levels.size());
 	return true;

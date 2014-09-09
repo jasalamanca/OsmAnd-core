@@ -22,7 +22,8 @@
 #include <Logging.h>
 
 // Full response type
-typedef std::vector<MapDataObject *> MapDataObjects_t;
+typedef MapDataObject * MapDataObject_pointer;
+typedef std::vector<MapDataObject_pointer> MapDataObjects_t;
 
 struct MapTreeBounds
 {
@@ -83,8 +84,14 @@ struct MapTreeBounds
 		// THINK: Maybe using boost::function to do only 1 call (one of them do nothing)
 		for_each(bounds,
 				 [&b, &result](MapTreeBounds const & node){node.query(b, result);});
+		for_each(dataObjects,
+				[&b, &result](MapDataObject_pointer obj)
+					{
+			if ((obj != nullptr) && intersects(b, obj->Box()))
+				result.push_back(obj);
+					});
 // TODO add boxes to DataObject and propagate query to DataObjects.
-		copy(dataObjects, std::back_inserter(result));
+////		copy(dataObjects, std::back_inserter(result));
 	}
 
 	void ContentReader(Reader_t r)

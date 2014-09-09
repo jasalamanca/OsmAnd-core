@@ -354,6 +354,17 @@ bool readCoordinates(CodedInputStream & input, coordinates & output,
 	return true;
 }
 
+bool readMainCoordinates(CodedInputStream & input, MapDataObject & output,
+		MapTreeBounds const & tree)
+{
+	if (!readCoordinates(input, output.points, tree)) return false;
+	bbox_t box = output.Box();
+	boost::for_each(output.points,
+			[&box](std::pair<int, int> const & p){ boost::geometry::expand(box, point_t(p.first, p.second)); });
+	output.Box(box);
+	return true;
+}
+
 #define NODE_CAPACITY 40
 
 MapDataObject* readMapDataObject(CodedInputStream & input,
@@ -372,7 +383,7 @@ MapDataObject* readMapDataObject(CodedInputStream & input,
 
 	MapDataObject* dataObject = new MapDataObject();
 	dataObject->area = area;
-	readCoordinates(input, dataObject->points, tree);
+	readMainCoordinates(input, *dataObject, tree);
 
 	while ((tag = input.ReadTag()) != 0)
 	{

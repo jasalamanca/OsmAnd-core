@@ -4,7 +4,8 @@
 #include <vector>
 #include <string>
 
-#include "Common.h"
+#include <Common.h>
+#include <Map.hpp>
 
 typedef std::pair<int, int> int_pair;
 typedef std::vector< std::pair<int, int> > coordinates;
@@ -24,6 +25,9 @@ public:
 	UNORDERED(map)< std::string, std::string > objectNames;
 	bool area;
 	long long id;
+
+	MapDataObject() : box(point_t(INT_MAX, INT_MAX), point_t(-1, -1))
+	{}
 
 	// Only called from renderImage on MapCreator
 	bool cycle() const {
@@ -81,6 +85,18 @@ public:
 		}
 		return 0;
 	}
+
+	bbox_t const & Box() const
+	{
+		return box;
+	}
+	void Box(bbox_t const & b)
+	{
+		box = b;
+	}
+
+private:
+	bbox_t box;
 };
 
 

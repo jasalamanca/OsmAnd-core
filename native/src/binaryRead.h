@@ -32,7 +32,7 @@ struct ResultPublisher {
 		result.push_back(r);
 		return true;
 	}
-	bool publish(std::vector<MapDataObject*> r) {
+	bool publish(std::vector<MapDataObject*> const & r) {
 		result.insert(result.begin(), r.begin(), r.end());
 		return true;
 	}

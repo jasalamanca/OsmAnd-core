@@ -99,9 +99,6 @@ private:
 	bbox_t box;
 };
 
-
-
-void deleteObjects(std::vector <MapDataObject* > & v);
-
+//void deleteObjects(std::vector <MapDataObject* > & v);
 
 #endif /*_OSMAND_MAP_OBJECTS_H*/

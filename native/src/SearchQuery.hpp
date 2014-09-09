@@ -25,7 +25,7 @@ struct ResultPublisher {
 		return false;
 	}
 	virtual ~ResultPublisher() {
-		deleteObjects(result);
+		//deleteObjects(result);
 	}
 };
 

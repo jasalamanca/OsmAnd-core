@@ -7,7 +7,6 @@
 #include "Logging.h"
 #include "multipolygons.h"
 
-// Only called from renderImage on MapCreator
 // returns true if coastlines were added!
 bool processCoastlines(std::vector<MapDataObject*>&  coastLines, int leftX, int rightX, int bottomY, int topY, int zoom,
 		bool showIfThereIncompleted, bool addDebugIncompleted, std::vector<MapDataObject*>& res) {

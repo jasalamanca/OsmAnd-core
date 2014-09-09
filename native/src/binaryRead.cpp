@@ -296,10 +296,10 @@ ResultPublisher* searchObjectsForRendering(SearchQuery * q, bool skipDuplicates,
 
 	// sort results/ analyze coastlines and publish back to publisher
 	if (q->publisher->isCancelled()) {
-		deleteObjects(coastLines);
-		deleteObjects(tempResult);
-		deleteObjects(basemapCoastLines);
-		deleteObjects(basemapResult);
+		//deleteObjects(coastLines);
+		//deleteObjects(tempResult);
+		//deleteObjects(basemapCoastLines);
+		//deleteObjects(basemapResult);
 	} else {
 		bool ocean = q->ocean;
 		bool land = q->mixed;
@@ -322,8 +322,9 @@ ResultPublisher* searchObjectsForRendering(SearchQuery * q, bool skipDuplicates,
 			fillCompleteArea = !coastlinesWereAdded;
 		}
 		// processCoastlines always create new objects
-		deleteObjects(basemapCoastLines);
-		deleteObjects(coastLines);
+		// FIXME NOW WE HAVE MEMORY LEAKS
+		//deleteObjects(basemapCoastLines);
+		//deleteObjects(coastLines);
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info,"Land %d ocean %d fillCompleteArea %d", 
 							land, ocean, fillCompleteArea);
 		if (fillCompleteArea) {
@@ -354,7 +355,7 @@ ResultPublisher* searchObjectsForRendering(SearchQuery * q, bool skipDuplicates,
 		if (q->zoom <= zoomOnlyForBasemaps || emptyData || (objectsFromRoutingSectionRead && q->zoom < detailedZoomStart)) {
 			tempResult.insert(tempResult.end(), basemapResult.begin(), basemapResult.end());
 		} else {
-			deleteObjects(basemapResult);
+			//deleteObjects(basemapResult);
 		}
 		q->publisher->result.clear();
 		q->publisher->publish(tempResult);

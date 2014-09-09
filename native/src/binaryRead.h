@@ -13,18 +13,6 @@
 #define close _close
 #endif
 
-////
-class RoutingIndex;
-class RouteSubregion;
-class RouteDataObject;
-////
-class MapIndex;
-class MapTreeBounds;
-class MapRoot;
-class MapDataObject;
-
-void deleteObjects(std::vector <MapDataObject* > & v);
-
 static const uint MAP_VERSION = 2;
 
 #include "MapIndex.hpp"

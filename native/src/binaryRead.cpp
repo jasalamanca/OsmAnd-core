@@ -510,6 +510,7 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 	mapFile->fd = fileDescriptor;
 
 	mapFile->routefd = routeDescriptor;
+/*** Now we forget cached files. We use our lazy implementation.
 	FileIndex* fo = NULL;
 	if (cache != NULL) {
 		struct stat stat;
@@ -574,7 +575,7 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 			mapFile->routingIndexes.push_back(mi);
 		}
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, "Native file initialized from cache %s", inputName.c_str());
-	} else {
+	} else { ***/
 		FileInputStream input(fileDescriptor);
 		input.SetCloseOnDelete(false);
 		CodedInputStream cis(&input);
@@ -585,7 +586,7 @@ BinaryMapFile* initBinaryMapFile(std::string const & inputName) {
 			delete mapFile;
 			return NULL;
 		}
-	}
+	/***}***/
 	mapFile->inputName = inputName;
 	openFiles.insert(std::pair<std::string, BinaryMapFile*>(inputName, mapFile));
 	return mapFile;

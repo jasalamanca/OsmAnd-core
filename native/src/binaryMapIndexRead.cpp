@@ -871,24 +871,21 @@ bool readMapIndex(CodedInputStream & input, MapIndex & output,
 	return true;
 }
 
-// Only called from renderImage on MapCreator
-bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types, MapIndex const * root) {
+// TODO Recover this check
+bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types)
+{
 	RenderingRuleSearchRequest* r = req->req;
-	for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++) {
-		for (int i = 1; i <= 3; i++) {
-			r->setIntFilter(r->props()->R_MINZOOM, req->zoom);
-			r->setStringFilter(r->props()->R_TAG, type->first);
-			r->setStringFilter(r->props()->R_VALUE, type->second);
-			if (r->search(i, false)) {
-				return true;
-			}
-		}
+	for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++)
+	{
+		r->setIntFilter(r->props()->R_MINZOOM, req->zoom);
 		r->setStringFilter(r->props()->R_TAG, type->first);
 		r->setStringFilter(r->props()->R_VALUE, type->second);
+		for (int i = 1; i <= 3; i++)
+			if (r->search(i, false))
+				return true;
 		r->setStringFilter(r->props()->R_NAME_TAG, "");
-		if (r->search(RenderingRulesStorage::TEXT_RULES, false)) {
+		if (r->search(RenderingRulesStorage::TEXT_RULES, false))
 			return true;
-		}
 	}
 
 	return false;

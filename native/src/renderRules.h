@@ -164,12 +164,12 @@ public:
 	std::vector<float> floatProperties;
 	std::vector<RenderingRule*> ifElseChildren;
 	std::vector<RenderingRule*> ifChildren;
+	bool isGroup;
 
-	RenderingRule(Attributes const & attrs, RenderingRulesStorage* storage);
+	RenderingRule(Attributes const & attrs, bool isGroup, RenderingRulesStorage* storage);
 	void printDebugRenderingRule(std::string & indent, RenderingRulesStorage const * st) const;
-
-private:
-	int getPropertyIndex(std::string const & property) const;
+private :
+	inline int getPropertyIndex(std::string const & property) const;
 
 public :
 	std::string const & getStringPropertyValue(std::string const & property,
@@ -194,6 +194,7 @@ public:
 	RenderingRuleProperty* R_TEXT_LENGTH;
 	RenderingRuleProperty* R_REF;
 	RenderingRuleProperty* R_TEXT_SHIELD;
+	RenderingRuleProperty* R_SHIELD;
 	RenderingRuleProperty* R_SHADOW_RADIUS;
 	RenderingRuleProperty* R_SHADOW_COLOR;
 	RenderingRuleProperty* R_SHADER;
@@ -227,6 +228,7 @@ public:
 	RenderingRuleProperty* R_TEXT_MIN_DISTANCE;
 	RenderingRuleProperty* R_TEXT_ON_PATH;
 	RenderingRuleProperty* R_ICON;
+	RenderingRuleProperty* R_ICON_VISIBLE_SIZE;
 	RenderingRuleProperty* R_LAYER;
 	RenderingRuleProperty* R_ORDER;
 	RenderingRuleProperty* R_TAG;
@@ -359,6 +361,8 @@ public:
 		// point
 		R_ICON = registerRuleInternal(RenderingRuleProperty::createOutputStringProperty("icon"));
 		R_ICON_ORDER = registerRuleInternal(RenderingRuleProperty::createOutputIntProperty("iconOrder"));
+		R_SHIELD = registerRuleInternal(RenderingRuleProperty::createOutputStringProperty("shield"));
+		R_ICON_VISIBLE_SIZE = registerRuleInternal(RenderingRuleProperty::createOutputIntProperty("iconVisibleSize"));
 
 		// polygon/way
 		R_COLOR = registerRuleInternal(RenderingRuleProperty::createOutputColorProperty("color"));
@@ -407,8 +411,7 @@ public:
 	const static int SIZE_STATES = 7;
 	UNORDERED(map)<int, RenderingRule*>* tagValueGlobalRules;
 	std::map<std::string, RenderingRule*> renderingAttributes;
-	// Not used
-	//std::map<std::string, std::string> renderingConstants;
+	std::map<std::string, std::string> renderingConstants;
 	std::vector<RenderingRule*> childRules;
 public:
 	RenderingRulesStorageProperties PROPS;
@@ -438,7 +441,7 @@ public:
 
 	RenderingRule* getRule(int state, int itag, int ivalue) const;
 
-	void registerGlobalRule(RenderingRule* rr, int state);
+	void registerGlobalRule(RenderingRule* rr, int state, int key);
 
 	int registerString(std::string const & d) {
 		int res;
@@ -506,6 +509,8 @@ private :
 
 	bool searchInternal(int state, int tagKey, int valueKey, bool loadOutput);
 	bool visitRule(RenderingRule const * rule, bool loadOutput);
+	void loadOutputProperties(RenderingRule const * rule);
+	bool checkInputProperties(RenderingRule const * rule);
 public:
 	RenderingRulesStorage* storage;
 

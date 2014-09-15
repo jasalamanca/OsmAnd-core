@@ -97,7 +97,6 @@ extern "C" JNIEXPORT void JNICALL Java_net_osmand_NativeLibrary_initRenderingRul
 	getStorage(ienv, storage);
 }
 
-// Only called from renderImage on MapCreator
 RenderingRuleSearchRequest* initSearchRequest(JNIEnv* env, jobject renderingRuleSearchRequest) {
 	jobject storage = env->GetObjectField(renderingRuleSearchRequest, RenderingRuleSearchRequest_storage);
 	RenderingRulesStorage* st = getStorage(env, storage);
@@ -141,7 +140,6 @@ extern "C" JNIEXPORT jlong JNICALL Java_net_osmand_NativeLibrary_searchNativeObj
 
 //////////////////////////////////////////
 ///////////// JNI RENDERING //////////////
-// Only called from renderImage on MapCreator
 void fillRenderingAttributes(JNIRenderingContext& rc, RenderingRuleSearchRequest* req) {
 	req->clearState();
 	req->setIntFilter(req->props()->R_MINZOOM, rc.getZoom());
@@ -632,8 +630,6 @@ void loadJniRenderingContext(JNIEnv* env)
     jfield_RouteSubregion_top= getFid(env,  jclass_RouteSubregion, "top", "I" );
     jfield_RouteSubregion_bottom= getFid(env,  jclass_RouteSubregion, "bottom", "I" );
     jfield_RouteSubregion_shiftToData= getFid(env,  jclass_RouteSubregion, "shiftToData", "I" );
-	// public final RouteRegion routeReg;
-
 }
 
 void pullFromJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext & rc)
@@ -652,14 +648,10 @@ void pullFromJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext 
 	rc.javaRenderingContext = jrc;
 }
 
-
-// ElapsedTimer routingTimer;
-
 jobject convertRouteDataObjectToJava(JNIEnv* ienv, RouteDataObject const * route, jobject reg) {
 	jintArray nameInts = ienv->NewIntArray(route->names.size());
 	jobjectArray nameStrings = ienv->NewObjectArray(route->names.size(), jclassString, NULL);
 	jint* ar = new jint[route->names.size()];
-//std::cerr << "names #" << route->names.size() << " namesIds #" << route->namesIds.size() << std::endl;
 	UNORDERED(map)<int, std::string >::const_iterator itNames = route->names.begin();
 	jsize sz = 0;
 	for (; itNames != route->names.end(); itNames++, sz++) {
@@ -724,13 +716,16 @@ jobject convertRouteDataObjectToJava(JNIEnv* ienv, RouteDataObject const * route
 jobject convertRouteSegmentResultToJava(JNIEnv* ienv, RouteSegmentResult& r, UNORDERED(map)<int64_t, int>& indexes,
 		jobjectArray regions) {
 	RouteDataObject* rdo = r.object.get();
-	jobject reg = NULL;
+	jobject reg = nullptr;
 	int64_t fp = rdo->region->filePointer;
 	int64_t ln = rdo->region->length;
 	if(indexes.count((fp <<31) + ln) != 0) {
 		reg = ienv->GetObjectArrayElement(regions, indexes[(fp <<31) + ln]);
 	}
-if (reg == NULL) std::cerr << "ConverToJava with region NULL........." << std::endl;
+
+	if (reg == nullptr)
+		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "ConverToJava with region NULL.........");
+
 	jobjectArray ar = ienv->NewObjectArray(r.attachedRoutes.size(), jclass_RouteSegmentResultAr, NULL);
 	for(jsize k = 0; k < r.attachedRoutes.size(); k++) {
 		jobjectArray art = ienv->NewObjectArray(r.attachedRoutes[k].size(), jclass_RouteSegmentResult, NULL);
@@ -761,17 +756,11 @@ public:
 	UNORDERED(map)<uint64_t, RouteDataObjects_t> cachedByLocations;
 };
 
-
 //	protected static native void deleteRouteSearchResult(long searchResultHandle!);
 extern "C" JNIEXPORT void JNICALL Java_net_osmand_NativeLibrary_deleteRouteSearchResult(JNIEnv* ienv,
 		jobject obj, jlong ref) {
-std::cerr << "deleteNAT" << std::endl;
-	NativeRoutingTile* t = (NativeRoutingTile*) ref;
-	for (unsigned int i = 0; i < t->result.size(); i++) {
-		////delete t->result[i];
-		t->result[i] = nullptr;
-	}
-	delete t;
+OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "deleteNAT");
+	delete (NativeRoutingTile*) ref;
 }
 
 class RouteCalculationProgressWrapper: public RouteCalculationProgress {
@@ -907,7 +896,6 @@ void parseRouteAttributeEvalRule(JNIEnv* ienv, jobject rule, RouteAttributeEvalR
 		ienv->DeleteLocalRef(expr);
 	}
 	ienv->DeleteLocalRef(expressions);
-
 }
 
 void parseRouteConfiguration(JNIEnv* ienv, RoutingConfiguration& rConfig, jobject jRouteConfig) {
@@ -915,7 +903,6 @@ void parseRouteConfiguration(JNIEnv* ienv, RoutingConfiguration& rConfig, jobjec
 	rConfig.heurCoefficient = ienv->GetFloatField(jRouteConfig, jfield_RoutingConfiguration_heuristicCoefficient);
 	rConfig.zoomToLoad = ienv->GetIntField(jRouteConfig, jfield_RoutingConfiguration_ZOOM_TO_LOAD_TILES);
 	jstring rName = (jstring) ienv->GetObjectField(jRouteConfig, jfield_RoutingConfiguration_routerName);
-////	rConfig.routerName = getString(ienv, rName);
 
 	jobject router = ienv->GetObjectField(jRouteConfig, jfield_RoutingConfiguration_router);
 
@@ -964,7 +951,6 @@ void parseRouteConfiguration(JNIEnv* ienv, RoutingConfiguration& rConfig, jobjec
 	ienv->DeleteLocalRef(objectAttributes);
 	ienv->DeleteLocalRef(router);
 	ienv->DeleteLocalRef(rName);
-
 }
 
 std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool leftSideNavigation);
@@ -982,7 +968,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_nativeRo
 	c.startY = data[1];
 	c.targetX = data[2];
 	c.targetY = data[3];
-	////c.basemap = basemap;
+	//c.basemap = basemap;
 	parsePrecalculatedRoute(ienv, c, precalculatedRoute);
 	ienv->ReleaseIntArrayElements(coordinates, (jint*)data, 0);
 	std::vector<RouteSegmentResult> r = searchRouteInternal(&c, false);
@@ -1019,7 +1005,7 @@ extern "C" JNIEXPORT jobjectArray JNICALL Java_net_osmand_NativeLibrary_getRoute
 		jobject obj, jobject reg, jlong ref, jint x31, jint y31) {
 	NativeRoutingTile* t = (NativeRoutingTile*) ref;
 	uint64_t lr = ((uint64_t) x31 << 31) + y31;
-std::cerr << "NATIVE getRouteDataObjects from " << t << " at " << lr << std::endl;
+OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Info, "NATIVE getRouteDataObjects from %d at %d", t, lr);
 	RouteDataObjects_t & collected = t->cachedByLocations[lr];
 	jobjectArray res = ienv->NewObjectArray(collected.size(), jclass_RouteDataObject, NULL);
 	for (jint i = 0; i < collected.size(); i++) {
@@ -1038,11 +1024,9 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 		jobject obj, jobject reg, jstring regName, jint regFilePointer,
 		jobject subreg, jboolean loadObjects) {
 	RoutingIndex ind;
-	////ind.filePointer = regFilePointer;
 	ind.name = getString(ienv, regName);
 	RouteSubregion sub(&ind);
 	sub.filePointer = ienv->GetIntField(subreg, jfield_RouteSubregion_filePointer);
-	////sub.length = ienv->GetIntField(subreg, jfield_RouteSubregion_length);
 	sub.left = ienv->GetIntField(subreg, jfield_RouteSubregion_left);
 	sub.right = ienv->GetIntField(subreg, jfield_RouteSubregion_right);
 	sub.top = ienv->GetIntField(subreg, jfield_RouteSubregion_top);
@@ -1063,10 +1047,6 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 				ienv->DeleteLocalRef(robj);
 			}
 		}
-////		for (int i = result.size()-1; i >= 0; --i) {
-//			delete result[i];
-//			result[i] = NULL;
-//		}
 		return ienv->NewObject(jclass_NativeRouteSearchResult, jmethod_NativeRouteSearchResult_init, ((jlong) 0), res);
 	} else {
 		NativeRoutingTile* r = new NativeRoutingTile();
@@ -1091,7 +1071,6 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 	}
 
 }
-
 
 void pushToJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext & rc)
 {
@@ -1162,4 +1141,3 @@ std::string JNIRenderingContext::getReshapedString(const std::string& name) {
 	this->env->DeleteLocalRef(n);
 	return res;
 }
-

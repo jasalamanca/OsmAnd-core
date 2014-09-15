@@ -374,8 +374,7 @@ bool processRouteSegment(RoutingContext* ctx, bool reverseWaySearch, SEGMENTS_QU
 				&& start > 0 )
 	{
 		// We have smaller indexes to visit
-		// We penalize if trying the reverse direction.
-		double obstacleTime = 0;////(ctx->firstRoadId == nt && ctx->firstRoadDirection > 0)?500:0;
+		double obstacleTime = 0;
 		if (segment->parentRoute != NULL)
 		{
 			obstacleTime = ctx->config.router.calculateTurnTime(segment, 0,

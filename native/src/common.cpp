@@ -1,19 +1,14 @@
 #include "common2.h"
 
-//#include <SkPath.h>
-//#include <SkBitmap.h>
 #include <SkImageDecoder.h>
 #include "Logging.h"
 
 #if defined(_WIN32)
-//#	include <windows.h>
-//#	include <mmsystem.h>
 #define isnan _isnan
 #define isinf !_finite
 #elif defined(__APPLE__)
 #	include <mach/mach_time.h>|
 #else
-//#	include <time.h>
 #endif
 
 TextDrawInfo::TextDrawInfo(std::string itext)
@@ -274,7 +269,6 @@ int findFirstNumberEndIndex(std::string const & value) {
 	}
 }
 
-
 double alignAngleDifference(double diff) {
 	while (diff > M_PI) {
 		diff -= 2 * M_PI;
@@ -283,5 +277,4 @@ double alignAngleDifference(double diff) {
 		diff += 2 * M_PI;
 	}
 	return diff;
-
 }

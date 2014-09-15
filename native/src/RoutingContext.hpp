@@ -41,13 +41,12 @@ public:
 	int startY;
 	int targetX;
 	int targetY;
-	////bool basemap;
+	//bool basemap;
 	PrecalculatedRouteDirection precalcRoute;
 	SHARED_PTR<FinalRouteSegment> finalRouteSegment;
 
 	// Counters
 	int visitedSegments;
-	////int loadedTiles;
 	OsmAnd::ElapsedTimer timeToLoad;
 	OsmAnd::ElapsedTimer timeToCalculate;
 	SHARED_PTR<RouteCalculationProgress> progress;

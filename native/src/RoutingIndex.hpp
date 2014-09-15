@@ -251,22 +251,6 @@ struct RouteSubregion
 		}
 	}
 
-	// TODO Remove as soon as possible
-	void queryLeafNode(bbox_t const & b, std::vector<RouteSubregion> & result) const
-	{
-		using boost::geometry::intersects;
-
-		// I can't say anything
-		if (!intersects(b, box))
-			return;
-
-		// Before using data
-		((RouteSubregion *)this)->readContent();  // TODO cast????
-
-		// Add this one
-		if (dataObjects.size() > 0) result.push_back(*this);
-	}
-
 	size_t memorySize() const
 	{
 		size_t sz = 0;
@@ -361,23 +345,6 @@ struct RoutingIndex : BinaryPartIndex
 		auto & rs = base?basesubregions:subregions;
 		for_each(rs,
 				 [&b, &result](RouteSubregion const & node){node.querySub(b, result);});
-	}
-
-	// Remove as soon as possible
-	void queryLeafNodes(bbox_t const & b, bool base, std::vector<RouteSubregion> & result) const
-	{
-////std::cerr << "RI.queryLNodes " << (base?"basemap ":"map ") << "box? " << b << " in " << box << std::endl;
-		using boost::geometry::intersects;
-		using boost::range::for_each;
-		using boost::range::copy;
-
-		// I can't say anything
-		if (!intersects(b, box))
-			return;
-
-		auto & rs = base?basesubregions:subregions;
-		for_each(rs,
-				 [&b, &result](RouteSubregion const & node){node.queryLeafNode(b, result);});
 	}
 
 	size_t memorySize() const

@@ -22,7 +22,6 @@ struct RoutingConfiguration
 	int zoomToLoad;
 	float heurCoefficient;
 	int planRoadDirection;
-////	std::string routerName;
 
 	void initParams(MAP_STR_STR& attributes) {
 		planRoadDirection = (int) parseFloat(attributes, "planRoadDirection", 0);
@@ -30,8 +29,6 @@ struct RoutingConfiguration
 		// don't use file limitations?
 		memoryLimitation = (int)parseFloat(attributes, "nativeMemoryLimitInMB", memoryLimitation);
 		zoomToLoad = (int)parseFloat(attributes, "zoomToLoadTiles", 16);
-		// routerName = parseString(attributes, "name", "default");
-		// routerProfile = parseString(attributes, "baseProfile", "car");
 	}
 
 	RoutingConfiguration(float initDirection = -360, int memLimit = 64) :

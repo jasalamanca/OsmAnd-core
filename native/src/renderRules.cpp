@@ -214,13 +214,7 @@ class RenderingRulesHandler {
 	}
 
 	static Attributes& parseAttributes(const char **atts, Attributes& m) {
-			//RenderingRulesStorage* st) {
 		while (*atts != NULL) {
-			// Not used
-			//std::string vl = std::string(atts[1]);
-			//if(vl.size() > 1 && vl[0] == '$') {
-			//	vl = st->renderingConstants[vl.substr(1, vl.size() - 1)];
-			//}
 			m[std::string(atts[0])] = std::string(atts[1]);
 			atts += 2;
 		}

@@ -15,8 +15,7 @@ bool processCoastlines(std::vector<MapDataObject*>&  coastLines, int leftX, int 
 	rightX = (rightX >> 5) << 5;
 	bottomY = (bottomY >> 5) << 5;
 	topY = (topY >> 5) << 5;
-	
-	
+
 	std::vector<coordinates> completedRings;
 	std::vector<coordinates > uncompletedRings;
 	std::vector<MapDataObject*>::iterator val = coastLines.begin();
@@ -75,7 +74,6 @@ bool processCoastlines(std::vector<MapDataObject*>&  coastLines, int leftX, int 
 			o->types.push_back(tag_value("natural", "coastline_line"));
 			res.push_back(o);
 		}
-
 	}
 	if (!showIfThereIncompleted && uncompletedRings.size() > 0) {
 		return false;
@@ -143,7 +141,6 @@ int ray_intersect_x(int prevX, int prevY, int x, int y, int middleY) {
 	}
 }
 
-// Only called from renderImage on MapCreator
 // Copied from MapAlgorithms
 bool isClockwiseWay(std::vector<int_pair>& c) {
 	if (c.size() == 0) {
@@ -205,9 +202,6 @@ bool isClockwiseWay(std::vector<int_pair>& c) {
 	return clockwiseSum >= 0;
 }
 
-
-
-// Only called from renderImage on MapCreator
 void combineMultipolygonLine(std::vector<coordinates>& completedRings, std::vector<coordinates>& incompletedRings,
 			coordinates& coordinates) {
 	if (coordinates.size() > 0) {
@@ -258,7 +252,6 @@ int safelyAddDelta(int number, int delta) {
 	return res;
 }
 
-// Only called from renderImage on MapCreator
 void unifyIncompletedRings(std::vector<std::vector<int_pair> >& toProccess, std::vector<std::vector<int_pair> >& completedRings,
 		int leftX, int rightX, int bottomY, int topY, long dbId, int zoom) {
 	std::set<int> nonvisitedRings;
@@ -399,9 +392,7 @@ void unifyIncompletedRings(std::vector<std::vector<int_pair> >& toProccess, std:
 
 }
 
-
-// Only called from renderImage on MapCreator
-	/**
+/**
  * @return -1 if there is no instersection or x<<32 | y
  */
 bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, int bottomY, int topY, int_pair& b) {
@@ -429,7 +420,6 @@ bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, 
 			b.second = ty;
 			return true;
 		}
-
 	}
 	if (px > rightX && x <= rightX) {
 		int ty = (int) (py + ((double) (y - py) * (px - rightX)) / (px - x));
@@ -438,7 +428,6 @@ bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, 
 			b.second = ty;
 			return true;
 		}
-
 	}
 
 	// try to search if point goes out
@@ -465,7 +454,6 @@ bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, 
 			b.second = ty;
 			return true;
 		}
-
 	}
 	if (px < rightX && x >= rightX) {
 		int ty = (int) (py + ((double) (y - py) * (px - rightX)) / (px - x));
@@ -474,7 +462,6 @@ bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, 
 			b.second = ty;
 			return true;
 		}
-
 	}
 
 	if (px == rightX || px == leftX || py == topY || py == bottomY) {
@@ -486,7 +473,6 @@ bool calculateIntersection(int x, int y, int px, int py, int leftX, int rightX, 
 	return false;
 }
 
-// Only called from renderImage on MapCreator
 bool calculateLineCoordinates(bool inside, int x, int y, bool pinside, int px, int py, int leftX, int rightX,
 		int bottomY, int topY, std::vector<int_pair>& coordinates) {
 	bool lineEnded = false;

@@ -5,7 +5,6 @@
 #include <vector>
 #include <map>
 
-//#include "Common.h"
 #include "common2.h"
 #include "mapObjects.h"
 
@@ -46,13 +45,7 @@ private:
 public:
 	bool input;
 	std::string const attrName;
-	// order in
 	int id;
-	// Not used
-	// use for custom rendering rule properties
-	//std::string name;
-	//std::string description;
-	//std::vector<std::string> possibleValues;
 
 	RenderingRuleProperty(std::string const & name, int type, bool input, int id = -1) :
 			type(type), input(input), attrName(name), id(id) {
@@ -163,7 +156,6 @@ public:
 	}
 };
 
-
 class RenderingRule
 {
 public:
@@ -193,7 +185,6 @@ public:
 
 	virtual ~RenderingRulesStorageResolver() {}
 };
-
 
 class RenderingRulesStorageProperties
 {
@@ -558,7 +549,6 @@ public:
 
 	bool searchRenderingAttribute(std::string const & attribute);
 };
-
 
 class BasePathRenderingRulesStorageResolver : public RenderingRulesStorageResolver {
 public:

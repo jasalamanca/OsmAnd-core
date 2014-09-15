@@ -203,8 +203,6 @@ private:
 	UNORDERED(map)<std::string, dynbitset > tagRuleMask;
 	std::vector<double> ruleToValue; // Object TODO;
 	bool shortestRoute;
-	
-	///UNORDERED(map)<RoutingIndex*, MAP_INT_INT> regionConvert;
 		
 public:
 	// cached values
@@ -278,8 +276,6 @@ public:
 	 */
 	double getMinDefaultSpeed() const;
 
-
-
 	/**
 	 * Used for A* routing to predict h(x) : it should be great any g(x)
 	 * 
@@ -311,7 +307,6 @@ private :
 	RouteAttributeContext & getObjContext(RouteDataObjectAttribute a) {
 		return objectAttributes[(unsigned int)a];
 	}
-
 };
 
 #endif /*_OSMAND_GENERAL_ROUTER_H*/

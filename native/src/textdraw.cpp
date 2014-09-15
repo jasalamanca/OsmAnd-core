@@ -11,12 +11,10 @@
 #include "utf8/unchecked.h"
 
 
-// Only called from renderImage on MapCreator
 inline float sqr(float a){
 	return a*a;
 }
 
-// Only called from renderImage on MapCreator
 void fillTextProperties(RenderingContext const & rc, TextDrawInfo* info, RenderingRuleSearchRequest* render, float cx, float cy) {
 	info->centerX = cx;
 	// used only for draw on path where centerY doesn't play role
@@ -39,7 +37,6 @@ void fillTextProperties(RenderingContext const & rc, TextDrawInfo* info, Renderi
 	info->textOrder = render->getIntPropertyValue(render->props()->R_TEXT_ORDER, 100);
 }
 
-// Only called from renderImage on MapCreator
 void drawTextOnCanvas(SkCanvas & cv, const char* text, uint16_t len, float centerX, float centerY, SkPaint& paintText,
 		int textShadowColor, float textShadow) {
 	if (textShadow > 0) {
@@ -56,7 +53,6 @@ void drawTextOnCanvas(SkCanvas & cv, const char* text, uint16_t len, float cente
 	cv.drawText(text, len, centerX, centerY, paintText);
 }
 
-// Only called from renderImage on MapCreator
 int nextWord(uint8_t* s, size_t* charRead) {
 	uint8_t* init = s;
 	while((*s) != 0) {
@@ -69,7 +65,6 @@ int nextWord(uint8_t* s, size_t* charRead) {
 	return -1;
 }
 
-// Only called from renderImage on MapCreator
 void drawWrappedText(RenderingContext const & rc, SkCanvas & cv, TextDrawInfo* text, float textSize, SkPaint & paintText) {
 	if(text->textWrap == 0) {
 		// set maximum for all text
@@ -111,7 +106,6 @@ void drawWrappedText(RenderingContext const & rc, SkCanvas & cv, TextDrawInfo* t
 	}
 }
 
-// Only called from renderImage on MapCreator
 bool calculatePathToRotate(RenderingContext const & rc, TextDrawInfo* p) {
 	if(p->path == NULL) {
 		return true;
@@ -276,24 +270,6 @@ bool calculatePathToRotate(RenderingContext const & rc, TextDrawInfo* p) {
 	return true;
 }
 
-/*** Not used
-void drawTestBox(SkCanvas* cv, SkRect* r, float rot, SkPaint* paintIcon, std::string text, SkPaint* paintText)
-{
-	cv->save();
-	cv->translate(r->centerX(),r->centerY());
-	cv->rotate(rot * 180 / M_PI);
-	SkRect rs = SkRect::MakeLTRB(-r->width()/2, -r->height()/2,
-			r->width()/2, r->height()/2);
-	cv->drawRect(rs, *paintIcon);
-	if (paintText != NULL) {
-		cv->drawText(text.data(), text.length(), rs.centerX(), rs.centerY(),
-				*paintText);
-	}
-	cv->restore();
-}
-****/
-
-// Only called from renderImage on MapCreator
 bool intersects(SkRect tRect, float tRot, TextDrawInfo* s)
 {
 	float sRot = s->pathRotate;
@@ -330,12 +306,10 @@ bool intersects(SkRect tRect, float tRot, TextDrawInfo* s)
 	return SkRect::Intersects(tRect, sRect);
 }
 
-// Only called from renderImage on MapCreator
 bool intersects(TextDrawInfo* t, TextDrawInfo* s) {
 	return intersects(t->bounds, t->pathRotate, s);
 }
 
-// Only called from renderImage on MapCreator
 bool findTextIntersection(SkCanvas & cv, RenderingContext & rc, quad_tree<TextDrawInfo*>& boundIntersections, TextDrawInfo* text,
 		SkPaint* paintText, SkPaint* paintIcon) {
 	paintText->measureText(text->text.c_str(), text->text.length(), &text->bounds);
@@ -356,8 +330,6 @@ bool findTextIntersection(SkCanvas & cv, RenderingContext & rc, quad_tree<TextDr
 	}
 
 	std::vector<TextDrawInfo*> searchText;
-	// for text purposes
-//	drawTestBox(cv, &text->bounds, text->pathRotate, paintIcon, text->text, NULL/*paintText*/);
 	boundIntersections.query_in_box(text->bounds, searchText);
 	for (uint32_t i = 0; i < searchText.size(); i++) {
 		TextDrawInfo* t = searchText[i];
@@ -369,7 +341,6 @@ bool findTextIntersection(SkCanvas & cv, RenderingContext & rc, quad_tree<TextDr
 		SkRect boundsSearch = text->bounds;
 		boundsSearch.inset(-std::max(rc.getDensityValue(5.0f), text->minDistance), -rc.getDensityValue(15));
 		boundIntersections.query_in_box(boundsSearch, searchText);
-//		drawTestBox(cv, &boundsSearch, text->pathRotate, paintIcon, text->text, paintText);
 		for (uint32_t i = 0; i < searchText.size(); i++) {
 			TextDrawInfo* t = searchText[i];
 			if (t->minDistance > 0 && t->text == text->text && intersects(boundsSearch, text->pathRotate,  t)) {
@@ -383,7 +354,6 @@ bool findTextIntersection(SkCanvas & cv, RenderingContext & rc, quad_tree<TextDr
 	return false;
 }
 
-// Only called from renderImage on MapCreator
 bool textOrder(TextDrawInfo* text1, TextDrawInfo* text2) {
 	return text1->textOrder < text2->textOrder;
 }
@@ -391,7 +361,6 @@ bool textOrder(TextDrawInfo* text1, TextDrawInfo* text2) {
 #if defined(ANDROID)
 static SkTypeface* sDefaultTypeface = nullptr;
 #endif
-// Only called from renderImage on MapCreator
 void drawTextOverCanvas(RenderingContext & rc, SkCanvas & cv) {
 	SkRect r = SkRect::MakeLTRB(0, 0, rc.getWidth(), rc.getHeight());
 	r.inset(-100, -100);
@@ -490,5 +459,3 @@ void drawTextOverCanvas(RenderingContext & rc, SkCanvas & cv) {
 		}
 	}
 }
-
-

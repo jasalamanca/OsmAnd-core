@@ -65,7 +65,6 @@ double parseValue(std::string const & value, std::string const & type) {
 	return vl;
 }
 
-
 void GeneralRouter::addAttribute(std::string const & k, std::string const & v) {
 	attributes[k] = v;
 	if(k=="restrictionsAware") {
@@ -232,15 +231,6 @@ int GeneralRouter::isOneWay(SHARED_PTR<RouteDataObject> const & road) {
 	return getObjContext(RouteDataObjectAttribute::ONEWAY).evaluateInt(road, 0);
 }
 
-/***
-double GeneralRouter::defineObstacle(SHARED_PTR<RouteDataObject> const & road, uint point) {
-	if(road->pointTypes.size() > point && road->pointTypes[point].size() > 0){
-		return getObjContext(RouteDataObjectAttribute::OBSTACLES).evaluateDouble(road->region, road->pointTypes[point], 0);
-	}
-	return 0;
-}
-*****/
-
 double GeneralRouter::defineRoutingObstacle(SHARED_PTR<RouteDataObject> const & road, uint point) {
 	if(road->pointTypes.size() > point && road->pointTypes[point].size() > 0){
 		return getObjContext(RouteDataObjectAttribute::ROUTING_OBSTACLES).evaluateDouble(road->region, road->pointTypes[point], 0);
@@ -291,9 +281,7 @@ double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment
 	}
 	double ts = definePenaltyTransition(segment->getRoad());
 	double prevTs = definePenaltyTransition(prev->getRoad());
-	//if(prevTs != ts) {
-			if(ts > prevTs) return (ts - prevTs);
-	//}
+	if(ts > prevTs) return (ts - prevTs);
 
 	if(segment->getRoad()->roundabout() && !prev->getRoad()->roundabout()) {
 		double rt = roundaboutTurn;
@@ -331,17 +319,10 @@ uint GeneralRouter::registerTagValueAttribute(const tag_value& r) {
 
 dynbitset RouteAttributeContext::convert(RoutingIndex* reg, std::vector<uint32_t>& types) const {
 	dynbitset b(router->universalRules.size());
-	///MAP_INT_INT map = router->regionConvert[reg];
 	for(uint k = 0; k < types.size(); k++) {
-		///MAP_INT_INT::const_iterator nid = map.find(types[k]);
 		int vl;
-		///if(nid == map.end()){
-			tag_value const & r = reg->decodingRules[types[k]];
-			vl = router->registerTagValueAttribute(r);
-			///map[types[k]] = vl;
-		///} else {
-			///vl = nid->second;
-		///}
+		tag_value const & r = reg->decodingRules[types[k]];
+		vl = router->registerTagValueAttribute(r);
 		increaseSize(b, router->universalRules.size()).set(vl);
 	}
 	return b;
@@ -353,7 +334,6 @@ double RouteAttributeEvalRule::eval(dynbitset const & types, ParameterContext co
 	}
 	return DOUBLE_MISSING;
 }
-
 
 double RouteAttributeEvalRule::calcSelectValue(dynbitset const & types, ParameterContext const & paramContext, GeneralRouter* router) {
 	if(selectValue != DOUBLE_MISSING) {

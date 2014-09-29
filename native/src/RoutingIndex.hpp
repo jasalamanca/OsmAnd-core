@@ -220,7 +220,7 @@ struct RouteSubregion
 		for_each(subregions,
 				[&b, &result](RouteSubregion const & node){node.query(b, result);});
 		for_each(dataObjects,
-				[&b, &result](RouteDataObject_pointer obj)
+				[&b, &result](RouteDataObject_pointer const & obj)
 					{
 			if ((obj != nullptr) && intersects(b, obj->Box()))
 				result.push_back(obj);

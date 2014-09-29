@@ -85,7 +85,7 @@ struct MapTreeBounds
 		for_each(bounds,
 				 [&b, &result](MapTreeBounds const & node){node.query(b, result);});
 		for_each(dataObjects,
-				[&b, &result](MapDataObject_pointer obj)
+				[&b, &result](MapDataObject_pointer const & obj)
 					{
 			if ((obj != nullptr) && intersects(b, obj->Box()))
 				result.push_back(obj);

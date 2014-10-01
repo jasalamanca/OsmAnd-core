@@ -130,7 +130,7 @@ public:
 			// textRendering, nativeOperations, oneWayPaints, reverseWayPaints
 			// tileDivisor, cosRotateTileSize, sinRotateTileSize,  calcX, calcY
 			// textToDraw, iconsToDraw,
-			shadowLevelMin(256), shadowLevelMax(0), polygonMinSizeToDisplay(0),
+			shadowLevelMin(256), shadowLevelMax(0), polygonMinSizeToDisplay(75),
 			roadDensityZoomTile(0), roadsDensityLimitPerTile(0) 
 	{
 	}

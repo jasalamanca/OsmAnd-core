@@ -12,8 +12,6 @@
 #include "Logging.h"
 #include "Internal.h"
 
-const int MAX_V = 75;
-
 #if defined(WIN32)
 #undef min
 #endif
@@ -21,7 +19,7 @@ const int MAX_V = 75;
 struct MapDataObjectPrimitive {
 	MapDataObject* obj;
 	int typeInd;
-	double order;
+	int order;
 	int objectType;
 };
 
@@ -678,15 +676,11 @@ void drawPoint(MapDataObject* mObj, RenderingRuleSearchRequest* req, SkCanvas & 
 void drawObject(RenderingContext & rc, SkCanvas & cv, RenderingRuleSearchRequest* req,
 	SkPaint & paint, std::vector<MapDataObjectPrimitive>& array, int objOrder) {
 
-	double minPolygonSize = 1. / rc.polygonMinSizeToDisplay;
 	for (size_t i = 0; i < array.size(); i++) {
 		rc.allObjects++;
 		MapDataObject* mObj = array[i].obj;
 		tag_value const & pair = mObj->types[array[i].typeInd];
 		if (objOrder == 0) {
-			if (array[i].order > minPolygonSize + ((int) array[i].order)) {
-				continue;
-			}
 			// polygon
 			drawPolygon(mObj, req, cv, paint, rc, pair);
 		} else if (objOrder == 1 || objOrder == 2) {
@@ -794,7 +788,7 @@ void filterLinesByDensity(RenderingContext const & rc, std::vector<MapDataObject
 	reverse(linesResArray.begin(), linesResArray.end());
 }
 
-bool sortByOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j) {
+inline bool sortByOrder(const MapDataObjectPrimitive& i,const MapDataObjectPrimitive& j) {
 	return (i.order<j.order);
 }
 
@@ -829,18 +823,18 @@ void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjec
 					mapObj.obj = mobj;
 					// polygon
 					if(objectType == 3) {
-						MapDataObjectPrimitive pointObj = mapObj;
-						pointObj.objectType = 1;
 						double area = polygonArea(mobj, mult);
-						if(area > MAX_V) { 
-							mapObj.order = mapObj.order + (1. / area);
-							polygonsArray.push_back(mapObj);
-							pointsArray.push_back(pointObj); // TODO fix duplicate text? verify if it is needed for icon
+						// filtering here ASAP by min size.
+						if ((area > rc.polygonMinSizeToDisplay)) {
+							MapDataObjectPrimitive pointObj = mapObj;
+							pointObj.objectType = 1;
+							polygonsArray.push_back(std::move(mapObj));
+							pointsArray.push_back(std::move(pointObj)); // TODO fix duplicate text? verify if it is needed for icon
 						}
 					} else if(objectType == 1) {
-						pointsArray.push_back(mapObj);
+						pointsArray.push_back(std::move(mapObj));
 					} else {
-						linesArray.push_back(mapObj);
+						linesArray.push_back(std::move(mapObj));
 					}
 					if (req->getIntPropertyValue(req->props()->R_SHADOW_LEVEL) > 0) {
 						rc.shadowLevelMin = std::min(rc.shadowLevelMin, order);

@@ -877,17 +877,6 @@ std::vector<RouteSegmentResult> searchRouteInternal(RoutingContext* ctx, bool le
 		OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Warning, "End point was found %lld [Native]", end->road->id);
 	}
 
-	// Postprocessing to manage start and end over the same road segment.
-	if (start->road->id == end->road->id)
-	{
-		// same road id, end is a better copy.
-		start->road = end->road;
-		if (start->segmentStart >= end->segmentStart)
-		{
-			start->segmentStart++;
-		}
-	}
-
 #ifndef UNI_REF_ALGO
 	// Bidirectional search
 	searchRouteInternal(ctx, start, end, leftSideNavigation);

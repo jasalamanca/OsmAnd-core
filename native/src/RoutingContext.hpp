@@ -66,9 +66,6 @@ private:
 	{
 		return ((int64_t)x << 32) + y;
 	}
-	inline int64_t calcRouteId(SHARED_PTR<RouteDataObject const> const & o, int ind) {
-		return ((int64_t) o->id << 10) + ind;
-	}
 	void loadMap(int x31, int y31);
 	void add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b);
 	bool acceptLine(SHARED_PTR<RouteDataObject> const & r) const

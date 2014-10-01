@@ -42,15 +42,6 @@ SHARED_PTR<RouteSegment> RoutingContext::findRouteSegment(uint32_t x31, uint32_t
 		RouteDataObject_pointer const & r = *it;
 		if (!filter(r))
 		{
-//if (TRACE_ROUTING)
-//{
-//std::cerr << "FindRS NAT ";
-//if (r == nullptr)
-//	std::cerr << "NULL";
-//else
-//	std::cerr << r->id << " NOT accepted";
-//std::cerr << std::endl;
-//}
 			continue;
 		}
 		for (size_t j = 1; j < r->pointsX.size(); ++j)
@@ -75,19 +66,6 @@ SHARED_PTR<RouteSegment> RoutingContext::findRouteSegment(uint32_t x31, uint32_t
 	}
 	if (road != nullptr)
 	{
-		/*** Always add a new point to road to allow 'RoutePlannerFrontEnd.searchRoute' postprocessing.
-		if ((candidateX == road->pointsX[index-1]) && (candidateY == road->pointsY[index-1]))
-		{
-			// Projection has same coordinates. None new.
-			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index-1);
-		}
-		if ((candidateX == road->pointsX[index]) && (candidateY == road->pointsY[index]))
-		{
-			// Projection has same coordinates. None new.
-			return (SHARED_PTR<RouteSegment>) new RouteSegment(road, index);
-		}
-		***/
-
 		SHARED_PTR<RouteDataObject> proj = SHARED_PTR<RouteDataObject>(new RouteDataObject(*road));
 		proj->pointsX.insert(proj->pointsX.begin() + index, candidateX);
 		proj->pointsY.insert(proj->pointsY.begin() + index, candidateY);
@@ -103,29 +81,6 @@ SHARED_PTR<RouteSegment> RoutingContext::findRouteSegment(uint32_t x31, uint32_t
 
 SHARED_PTR<RouteSegment> RoutingContext::loadRouteSegment(uint32_t x31, uint32_t y31)
 {
-	UNORDERED(set)<int64_t> excludeDuplications;
-	SHARED_PTR<RouteSegment> original;
-	// First search on new roads. Newer is better.
-	// FIXME Revision on every loadRouteSegment is crazy. We must not update map or change how we update.
-	for (int i = registered.size()-1; i >= 0; --i)
-	{
-		SHARED_PTR<RouteDataObject> const & ro = registered[i];
-		for (size_t index = 0; index < ro->pointsX.size(); ++index)
-		{
-			int64_t roId = calcRouteId(ro, index);
-			if (excludeDuplications.count(roId) == 0) {
-				excludeDuplications.insert(roId);
-				if (x31 == ro->pointsX[index] && y31 == ro->pointsY[index])
-				{
-					SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, index));
-					s->next = original;
-					original = 	s;
-				}
-			}
-		}
-	}
-
-	// Second search on map info.
 	int64_t key = makeKey(x31, y31);
 	if (connections.count(key) == 0)
 		loadMap(x31, y31);
@@ -133,23 +88,8 @@ SHARED_PTR<RouteSegment> RoutingContext::loadRouteSegment(uint32_t x31, uint32_t
 
 	if (segment == nullptr)
 		std::cerr << "loadSegment(" << x31 << ',' << y31 << ")=NULL" << std::endl;
-
-	while (segment != nullptr)
-	{
-		SHARED_PTR<RouteDataObject> const & ro = segment->road;
-		int sStart = segment->segmentStart;
-		int64_t roId = calcRouteId(ro, sStart);
-		if (excludeDuplications.count(roId) == 0) {
-			excludeDuplications.insert(roId);
-			// TODO Avoid this copies
-			// Dued to registered. A container could be better than a linked structure.
-			SHARED_PTR<RouteSegment> s = SHARED_PTR<RouteSegment>(new RouteSegment(ro, sStart));
-			s->next = original;
-			original = 	s;
-		}
-		segment = segment->next;
-	}
-	return original;
+	return segment;
+	// return connections[key];
 }
 
 void RoutingContext::add(SHARED_PTR<RouteDataObject> const & o, bbox_t const & b)
@@ -199,4 +139,31 @@ void RoutingContext::loadMap(int x31, int y31)
 void RoutingContext::registerRouteDataObject(SHARED_PTR<RouteDataObject> const & o)
 {
 	registered.push_back(SHARED_PTR<RouteDataObject>(o));
+
+	// UPDATE connections data.
+	// Always after loadMap calls
+	SHARED_PTR<RouteDataObject> const & ro = registered.back();
+	for (int i = ro->pointsX.size()-1; i >= 0; --i)
+	{
+		uint32_t x31 = ro->pointsX[i];
+		uint32_t y31 = ro->pointsY[i];
+		loadMap(x31, y31);
+		int64_t l = makeKey(x31, y31);
+		SHARED_PTR<RouteSegment> segment = connections[l];
+		// If no info at this point, directly add RouteSegment
+		if (segment == nullptr)
+		{
+			connections[l] = SHARED_PTR<RouteSegment>(new RouteSegment(ro, i));
+			continue;
+		}
+		while (segment != nullptr)
+		{
+			if (segment->road->id == ro->id)
+			{
+				segment->road = ro;
+				segment->segmentStart = i;
+			}
+			segment = segment->next;
+		}
+	}
 }

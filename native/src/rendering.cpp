@@ -798,6 +798,9 @@ void sortObjectsByProperOrder(std::vector <MapDataObject* > const & mapDataObjec
 		std::vector<MapDataObjectPrimitive>& linesResArray) {
 	if (req != NULL) {
 		std::vector<MapDataObjectPrimitive> linesArray;
+		polygonsArray.reserve(20);  // Test to reduce reallocations
+		linesArray.reserve(20);
+		pointsArray.reserve(20);
 		req->clearState();
 		const int size = mapDataObjects.size();
 		float mult = 1. / getPowZoom(std::max(31 - (rc.getZoom() + 8), 0));

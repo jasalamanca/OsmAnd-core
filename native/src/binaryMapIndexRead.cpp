@@ -62,6 +62,7 @@ bool readCoordinates(CodedInputStream & input, coordinates & output,
 		MapTreeBounds const & tree)
 {
 	LDMessage<> inputManager(input);
+	output.reserve(4);
 	// Delta encoded coordinates
 	int px = tree.Box().min_corner().x() & MASK_TO_READ;
 	int py = tree.Box().min_corner().y() & MASK_TO_READ;
@@ -340,7 +341,7 @@ bool readMapLevelNodes(CodedInputStream & input, MapTreeBounds & output,
 		MapIndex const & index, int fd)
 {
 	LDMessage<OSMAND_FIXED32> inputMnager(input);
-	MapRoot::Bounds_t nodes;
+	MapRoot::Bounds_t nodes(NODE_CAPACITY);
 	int tag;
 	while ((tag = input.ReadTag()) != 0)
 	{
@@ -479,6 +480,7 @@ bool readMapIndex(CodedInputStream & input, MapIndex & output,
 {
 //OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new MapIndex pos %d", input.TotalBytesRead());
 	LDMessage<OSMAND_FIXED32> inputManager(input);
+	output.levels.reserve(4);
 	uint32_t tag;
 	uint32_t defaultId = 1;
 	while ((tag = input.ReadTag()) != 0)

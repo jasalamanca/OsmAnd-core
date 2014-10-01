@@ -122,6 +122,8 @@ bool readRoutePoints(CodedInputStream & input, RouteDataObject * output,
 	int px = context.Box().min_corner().x() >> ROUTE_SHIFT_COORDINATES;
 	int py = context.Box().min_corner().y() >> ROUTE_SHIFT_COORDINATES;
 	bbox_t box = output->Box();
+	output->pointsX.reserve(5);
+	output->pointsY.reserve(5);
 	while (input.BytesUntilLimit() > 0)
 	{
 		int deltaX, deltaY;
@@ -148,6 +150,7 @@ bool readRoutePoints(CodedInputStream & input, RouteDataObject * output,
 bool readRouteNames(CodedInputStream & input, RouteDataObject * output)
 {
 	LDMessage<> inputManager(input);
+	output->namesIds.reserve(3);
 	uint32_t s;
 	uint32_t t;
 	while (input.BytesUntilLimit() > 0)
@@ -255,11 +258,14 @@ bool readRestrictions(CodedInputStream & input, Restrictions_t & output)
 	return true;
 }
 
+#define NODE_CAPACITY 40
+
 typedef std::vector<int64_t> IdTable_t;
 // Reads the table of ids.
 bool readIdTable(CodedInputStream & input, IdTable_t & output)
 {
 	LDMessage<> inputManager(input);
+	output.reserve(NODE_CAPACITY);
 	int64_t routeId = 0;
 	int tag;
 	while ((tag = input.ReadTag()) != 0)
@@ -286,8 +292,6 @@ bool readIdTable(CodedInputStream & input, IdTable_t & output)
 
 bool readRouteTreeBase(CodedInputStream & input, RouteSubregion & output,
 		RouteSubregion const * parentTree,	RoutingIndex * ind, int fd);
-
-#define NODE_CAPACITY 40
 
 // Reads children
 bool readRouteTreeNodes(CodedInputStream & input, RouteSubregion & output, RoutingIndex * ind, int fd)
@@ -484,6 +488,8 @@ bool readRoutingIndex(CodedInputStream & input, RoutingIndex & output, int fd)
 //OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "new RoutingIndex pos %d", input.TotalBytesRead());
     // TODO Remove filePointer and length ASAP
 	LDMessage<OSMAND_FIXED32> inputManager(input);
+	output.subregions.reserve(2);
+	output.basesubregions.reserve(2);
     output.filePointer = input.TotalBytesRead();
 	output.length = input.BytesUntilLimit();
 	uint32_t defaultId = 1;

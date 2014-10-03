@@ -59,7 +59,34 @@ struct MapTreeBounds
 			q.mixed = true;
 		//
 		bbox_t b = boost::geometry::make<bbox_t>(q.left, q.top, q.right, q.bottom);
-		query(b, result);
+		//query(b, result);// I copy code to change condition.
+		// TODO Interface must reflect this central role of condition to be easily adaptable.
+		using boost::geometry::intersects;
+		using boost::range::for_each;
+		using boost::range::copy;
+
+		// I can't say anything
+		if (!intersects(b, box))
+			return;
+//{
+//std::ostringstream msg;
+//msg << " MTB query box? " << b << " in " << box << std::endl;
+//OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Debug, msg.str().c_str());
+//}
+// Before using data
+		((MapTreeBounds *)this)->readContent();  // TODO cast????
+
+		// THINK: Maybe using boost::function to do only 1 call (one of them do nothing)
+		for_each(bounds,
+				[&b, &result](MapTreeBounds const & node){node.query(b, result);});
+		for_each(dataObjects,
+				[&q, &b, &result](MapDataObject_pointer const & obj)
+				{
+			if ((obj != nullptr) && intersects(b, obj->Box()) && q.acceptTypes(obj->types))
+				result.push_back(obj);
+				});
+// TODO add boxes to DataObject and propagate query to DataObjects.
+////	copy(dataObjects, std::back_inserter(result));
 	}
 
 	// TODO extract as algorithm and do a lazy implementation.

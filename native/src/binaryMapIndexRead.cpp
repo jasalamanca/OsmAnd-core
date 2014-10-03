@@ -129,12 +129,6 @@ MapDataObject* readMapDataObject(CodedInputStream & input,
 			break;
 		case MapData::kTypesFieldNumber:
 			readTypes(input, dataObject->types, index);
-// Check on search
-//			if (!acceptTypes(req, dataObject->types, index))
-//			{
-//				input.Skip(input.BytesUntilLimit());
-//				return NULL;
-//			}
 			break;
 		case MapData::kIdFieldNumber:
 		{
@@ -524,24 +518,4 @@ bool readMapIndex(CodedInputStream & input, MapIndex & output,
 //OsmAnd::LogPrintf(OsmAnd::LogSeverityLevel::Error, "readMI #decR %d, #levels %d",
 //			output.decodingRules.size(), output.levels.size());
 	return true;
-}
-
-// TODO Recover this check
-bool acceptTypes(SearchQuery* req, std::vector<tag_value> const & types)
-{
-	RenderingRuleSearchRequest* r = req->req;
-	for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++)
-	{
-		r->setIntFilter(r->props()->R_MINZOOM, req->zoom);
-		r->setStringFilter(r->props()->R_TAG, type->first);
-		r->setStringFilter(r->props()->R_VALUE, type->second);
-		for (int i = 1; i <= 3; i++)
-			if (r->search(i, false))
-				return true;
-		r->setStringFilter(r->props()->R_NAME_TAG, "");
-		if (r->search(RenderingRulesStorage::TEXT_RULES, false))
-			return true;
-	}
-
-	return false;
 }

@@ -63,6 +63,24 @@ struct SearchQuery {
 	bool publish(MapDataObject* obj) {
 		return publisher->publish(obj);
 	}
+
+	bool acceptTypes(std::vector<tag_value> const & types)
+	{
+		for (std::vector<tag_value>::const_iterator type = types.begin(); type != types.end(); type++)
+		{
+			req->setIntFilter(req->props()->R_MINZOOM, zoom);
+			req->setStringFilter(req->props()->R_TAG, type->first);
+			req->setStringFilter(req->props()->R_VALUE, type->second);
+			for (int i = 1; i <= 3; i++)
+				if (req->search(i, false))
+					return true;
+			req->setStringFilter(req->props()->R_NAME_TAG, "");
+			if (req->search(RenderingRulesStorage::TEXT_RULES, false))
+				return true;
+		}
+
+		return false;
+	}
 };
 
 #endif /* SEARCHQUERY_HPP_ */

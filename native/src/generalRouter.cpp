@@ -109,7 +109,7 @@ void RouteAttributeEvalRule::printRule(GeneralRouter const * r) const {
 				s << " if ";
 				f = !f;
 			}
-			tag_value key = r->universalRulesById[k];
+			tag_value const & key = r->universalRulesById[k];
 			s << key.first << "/" << key.second;
 		}
 	}
@@ -120,7 +120,7 @@ void RouteAttributeEvalRule::printRule(GeneralRouter const * r) const {
 				s << " if ";
 				f = !f;
 			}
-			tag_value key = r->universalRulesById[k];
+			tag_value const & key = r->universalRulesById[k];
 			s << key.first << "/" << key.second;
 		}
 	}

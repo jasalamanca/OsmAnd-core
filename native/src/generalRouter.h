@@ -177,7 +177,7 @@ private:
 		return d;
 	}
 
-	double evaluateDouble(SHARED_PTR<RouteDataObject> ro, double defValue) {
+	double evaluateDouble(SHARED_PTR<RouteDataObject> const & ro, double defValue) {
 		double d = evaluate(ro);
 		if(d == DOUBLE_MISSING) {
 			return defValue;
@@ -219,7 +219,7 @@ public:
 
 	RouteAttributeContext* newRouteAttributeContext() {
 		RouteAttributeContext c(this);
-		objectAttributes.push_back(c);
+		objectAttributes.push_back(std::move(c));
 		return &objectAttributes[objectAttributes.size() - 1];
 	}
 

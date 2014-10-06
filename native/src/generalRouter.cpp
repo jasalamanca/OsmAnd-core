@@ -213,59 +213,6 @@ double GeneralRouter::parseValueFromTag(uint id, std::string const & type, Gener
 	return res;
 }
 
-
-bool GeneralRouter::containsAttribute(std::string const & attribute) const {
-	return attributes.find(attribute) != attributes.end();
-}
-
-std::string const & GeneralRouter::getAttribute(std::string const & attribute) {
-	return attributes[attribute];
-}
-
-bool GeneralRouter::acceptLine(SHARED_PTR<RouteDataObject> const & way) {
-	int res = getObjContext(RouteDataObjectAttribute::ACCESS).evaluateInt(way, 0);
-	return res >= 0;
-}
-
-int GeneralRouter::isOneWay(SHARED_PTR<RouteDataObject> const & road) {
-	return getObjContext(RouteDataObjectAttribute::ONEWAY).evaluateInt(road, 0);
-}
-
-double GeneralRouter::defineRoutingObstacle(SHARED_PTR<RouteDataObject> const & road, uint point) {
-	if(road->pointTypes.size() > point && road->pointTypes[point].size() > 0){
-		return getObjContext(RouteDataObjectAttribute::ROUTING_OBSTACLES).evaluateDouble(road->region, road->pointTypes[point], 0);
-	}
-	return 0;
-}
-
-double GeneralRouter::defineRoutingSpeed(SHARED_PTR<RouteDataObject> const & road) {
-	return std::min(defineVehicleSpeed(road), maxDefaultSpeed);
-}
-
-double GeneralRouter::defineVehicleSpeed(SHARED_PTR<RouteDataObject> const & road) {
-	return getObjContext(RouteDataObjectAttribute::ROAD_SPEED) .evaluateDouble(road, getMinDefaultSpeed() * 3.6) / 3.6;
-}
-
-double GeneralRouter::definePenaltyTransition(SHARED_PTR<RouteDataObject> const & road) {
-	return getObjContext(RouteDataObjectAttribute::PENALTY_TRANSITION) .evaluateDouble(road, 0);
-}
-
-double GeneralRouter::defineSpeedPriority(SHARED_PTR<RouteDataObject> const & road) {
-	return getObjContext(RouteDataObjectAttribute::ROAD_PRIORITIES).evaluateDouble(road, 1.);
-}
-
-double GeneralRouter::getMinDefaultSpeed() const {
-	return minDefaultSpeed;
-}
-
-double GeneralRouter::getMaxDefaultSpeed() const {
-	return maxDefaultSpeed;
-}
-
-bool GeneralRouter::restrictionsAware() const {
-	return _restrictionsAware;
-}
-
 double GeneralRouter::calculateTurnTime(SHARED_PTR<RouteSegment> const & segment, int segmentEnd,
 		SHARED_PTR<RouteSegment> const & prev, int prevSegmentEnd) {
 	if(prev->road->pointTypes.size() > (uint)prevSegmentEnd && prev->road->pointTypes[prevSegmentEnd].size() > 0){

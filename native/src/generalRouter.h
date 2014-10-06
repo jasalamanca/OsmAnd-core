@@ -225,20 +225,33 @@ public:
 
 	void addAttribute(std::string const & k, std::string const & v) ;
 
-	bool containsAttribute(std::string const & attribute) const;
-	
-	std::string const & getAttribute(std::string const & attribute);
-	
+	bool containsAttribute(std::string const & attribute) const
+	{
+		return attributes.find(attribute) != attributes.end();
+	}
+
+	std::string const & getAttribute(std::string const & attribute)
+	{
+		return attributes[attribute];
+	}
+
 	/**
 	 * return if the road is accepted for routing
 	 */
-	bool acceptLine(SHARED_PTR<RouteDataObject> const & way);
-	
+	bool acceptLine(SHARED_PTR<RouteDataObject> const & way)
+	{
+		int res = getObjContext(RouteDataObjectAttribute::ACCESS).evaluateInt(way, 0);
+		return res >= 0;
+	}
+
 	/**
 	 * return oneway +/- 1 if it is oneway and 0 if both ways
 	 */
-	int isOneWay(SHARED_PTR<RouteDataObject> const & road);
-	
+	int isOneWay(SHARED_PTR<RouteDataObject> const & road)
+	{
+		return getObjContext(RouteDataObjectAttribute::ONEWAY).evaluateInt(road, 0);
+	}
+
 	/**
 	 * return delay in seconds (0 no obstacles)
 	 */
@@ -247,47 +260,74 @@ public:
 	/**
 	 * return delay in seconds (0 no obstacles)
 	 */
-	double defineRoutingObstacle(SHARED_PTR<RouteDataObject> const & road, uint point);
+	double defineRoutingObstacle(SHARED_PTR<RouteDataObject> const & road, uint point)
+	{
+		if(road->pointTypes.size() > point && road->pointTypes[point].size() > 0){
+			return getObjContext(RouteDataObjectAttribute::ROUTING_OBSTACLES).evaluateDouble(road->region, road->pointTypes[point], 0);
+		}
+		return 0;
+	}
 
 	/**
 	 * return routing speed in m/s for vehicle for specified road
 	 */
-	double defineRoutingSpeed(SHARED_PTR<RouteDataObject> const & road);
+	double defineRoutingSpeed(SHARED_PTR<RouteDataObject> const & road)
+	{
+		return std::min(defineVehicleSpeed(road), maxDefaultSpeed);
+	}
 
 	/*
 	* return transition penalty between different road classes in seconds
 	*/
-	double definePenaltyTransition(SHARED_PTR<RouteDataObject> const & road);
+	double definePenaltyTransition(SHARED_PTR<RouteDataObject> const & road)
+	{
+		return getObjContext(RouteDataObjectAttribute::PENALTY_TRANSITION) .evaluateDouble(road, 0);
+	}
 
 	/**
 	 * return real speed in m/s for vehicle for specified road
 	 */
-	double defineVehicleSpeed(SHARED_PTR<RouteDataObject> const & road);
-	
+	double defineVehicleSpeed(SHARED_PTR<RouteDataObject> const & road)
+	{
+		return getObjContext(RouteDataObjectAttribute::ROAD_SPEED) .evaluateDouble(road, getMinDefaultSpeed() * 3.6) / 3.6;
+	}
+
 	/**
 	 * define priority to multiply the speed for g(x) A* 
 	 */
-	double defineSpeedPriority(SHARED_PTR<RouteDataObject> const & road);
+	double defineSpeedPriority(SHARED_PTR<RouteDataObject> const & road)
+	{
+		return getObjContext(RouteDataObjectAttribute::ROAD_PRIORITIES).evaluateDouble(road, 1.);
+	}
 
 	/**
 	 * Used for A* routing to calculate g(x)
 	 * 
 	 * @return minimal speed at road in m/s
 	 */
-	double getMinDefaultSpeed() const;
+	double getMinDefaultSpeed() const
+	{
+		return minDefaultSpeed;
+	}
 
 	/**
 	 * Used for A* routing to predict h(x) : it should be great any g(x)
 	 * 
 	 * @return maximum speed to calculate shortest distance
 	 */
-	double getMaxDefaultSpeed() const;
-	
+	double getMaxDefaultSpeed() const
+	{
+		return maxDefaultSpeed;
+	}
+
 	/**
 	 * aware of road restrictions
 	 */
-	bool restrictionsAware() const;
-	
+	bool restrictionsAware() const
+	{
+		return _restrictionsAware;
+	}
+
 	/**
 	 * Calculate turn time 
 	 */

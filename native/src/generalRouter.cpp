@@ -124,9 +124,9 @@ void RouteAttributeEvalRule::printRule(GeneralRouter const * r) const {
 			s << key.first << "/" << key.second;
 		}
 	}
-	for(uint k = 0; k < parameters.size(); k++) {
-		s << " param=" << parameters[k];
-	}
+//	for(uint k = 0; k < parameters.size(); k++) {
+//		s << " param=" << parameters[k];
+//	}
 	if(onlyTags.size() > 0) {
 		s << " match tag = ";
 		toStr(s, onlyTags);
@@ -155,9 +155,6 @@ RouteAttributeExpression::RouteAttributeExpression(std::vector<std::string> cons
 }
 
 void RouteAttributeEvalRule::registerAndTagValueCondition(GeneralRouter* r, std::string const & tag, std::string const & value, bool nt) {
-	tagValueCondDefTag.push_back(tag);
-	tagValueCondDefValue.push_back(value);
-	tagValueCondDefNot.push_back(nt);
 	if(value == "") { 
 		if (nt) {
 			onlyNotTags.insert(tag);
@@ -173,10 +170,6 @@ void RouteAttributeEvalRule::registerAndTagValueCondition(GeneralRouter* r, std:
 			increaseSize(filterTypes, vtype + 1).set(vtype);
 		}
 	}
-}
-
-void RouteAttributeEvalRule::registerParamConditions(std::vector<std::string> const & params) {
-	parameters.insert(parameters.end(), params.begin(), params.end());
 }
 
 void RouteAttributeEvalRule::registerSelectValue(std::string const & value, std::string const & type) {

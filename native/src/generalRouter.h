@@ -73,21 +73,16 @@ class RouteAttributeEvalRule {
 	friend class RouteAttributeContext;
 
 private: 
-	std::vector<std::string> parameters ;
+//	std::vector<std::string> parameters;
 	double selectValue ;
 	std::string selectValueDef ;
 	std::string selectType;
 	dynbitset filterTypes;
 	dynbitset filterNotTypes;
-		
+
 	UNORDERED(set)<std::string> onlyTags;
 	UNORDERED(set)<std::string> onlyNotTags;
 	std::vector<RouteAttributeExpression> expressions;
-
-	std::vector<std::string> tagValueCondDefValue;
-	std::vector<std::string> tagValueCondDefTag;
-	std::vector<bool> tagValueCondDefNot;
-
 
 	bool matches(dynbitset const & types, ParameterContext const & paramContext, GeneralRouter * router);
 	double eval(dynbitset const & types, ParameterContext const & paramContext, GeneralRouter * router);
@@ -104,7 +99,9 @@ public:
 	void registerAndTagValueCondition(GeneralRouter* r, std::string const & tag, std::string const & value, bool nt);
 
 	// formated as [param1,-param2]
-	void registerParamConditions(std::vector<std::string> const & params);
+	//void registerParamConditions(std::vector<std::string> const & params) {
+	//	parameters.insert(parameters.end(), params.begin(), params.end());
+	//}
 	void registerSelectValue(std::string const & selectValue, std::string const & selectType);
 	void registerExpression(RouteAttributeExpression const & expression) {
 		expressions.push_back(expression);

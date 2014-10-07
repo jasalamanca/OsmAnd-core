@@ -855,12 +855,12 @@ void parseRouteAttributeEvalRule(JNIEnv* ienv, jobject rule, RouteAttributeEvalR
 
 	erule->registerSelectValue(selectValue, selectType); 
 
-	jobjectArray ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getParameters);
-	std::vector<std::string> params = convertJArrayToStrings(ienv, ar);
-	ienv->DeleteLocalRef(ar);
-	erule->registerParamConditions(params);
+//	jobjectArray ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getParameters);
+//	std::vector<std::string> params = convertJArrayToStrings(ienv, ar);
+//	ienv->DeleteLocalRef(ar);
+//	erule->registerParamConditions(params);
 
-	ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getTagValueCondDefValue);
+	jobjectArray ar = (jobjectArray) ienv->CallObjectMethod(rule, jmethod_RouteAttributeEvalRule_getTagValueCondDefValue);
 	std::vector<std::string> tagValueDefValues = convertJArrayToStrings(ienv, ar);
 	ienv->DeleteLocalRef(ar);
 

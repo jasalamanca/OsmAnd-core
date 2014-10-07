@@ -31,6 +31,19 @@ SHARED_PTR<RouteSegment> RoutingContext::findRouteSegment(uint32_t x31, uint32_t
 		b = boost::geometry::make<bbox_t>(x31-20000, y31-20000, x31+20000, y31+20000);
 		RoutingQuery(b, dataObjects);
 	}
+
+	// If we have some dataObjects we must add registered versions of roads
+	// to select that newer versions. Newer is better.
+	if (!dataObjects.empty())
+	{
+		boost::range::for_each(registered,
+				[&dataObjects](RouteDataObject_pointer const & rdo)
+				{
+			dataObjects.insert(dataObjects.begin(), rdo);
+				}
+		);
+	}
+
 	// Candidate
 	RouteDataObject_pointer road;
 	size_t index = 0;
@@ -74,7 +87,8 @@ SHARED_PTR<RouteSegment> RoutingContext::findRouteSegment(uint32_t x31, uint32_t
 		}
 		// re-register the best road because one more point was inserted
 		registerRouteDataObject(proj);
-		return SHARED_PTR<RouteSegment>(new RouteSegment(proj, index));
+		// We get RoutingContext map view data. So it will be updated if necessary.
+		return loadRouteSegment(candidateX, candidateY);
 	}
 	return nullptr;
 }

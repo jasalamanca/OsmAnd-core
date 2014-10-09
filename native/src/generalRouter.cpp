@@ -27,14 +27,18 @@ std::string const & parseString(MAP_STR_STR & attributes, std::string const & ke
 	return def;
 }
 
-dynbitset& increaseSize(dynbitset& t, uint targetSize) {
+inline dynbitset& increaseSize(dynbitset& t, uint targetSize) {
 	if(t.size() < targetSize) {
 		t.resize(targetSize);
 	}
 	return t;
 }
 
-dynbitset& align(dynbitset& t, uint targetSize) {
+inline dynbitset& align(dynbitset& t, uint targetSize)
+{
+	if (t.size() == targetSize)
+		return t;
+
 	if(t.size() < targetSize) {
 		t.resize(targetSize);
 	} else if(t.size() > targetSize) {
@@ -315,7 +319,6 @@ bool RouteAttributeExpression::matches(dynbitset const & types, ParameterContext
 	return false;
 }
 
-
 double RouteAttributeExpression::calculateExprValue(int id, dynbitset const & types, ParameterContext const & paramContext, GeneralRouter* router) const {
 	std::string const & value = values[id];
 	// TODO initialize cacheValues correctly
@@ -365,7 +368,7 @@ bool RouteAttributeEvalRule::matches(dynbitset const & types, ParameterContext c
 	return true;
 }
 
-bool RouteAttributeEvalRule::checkExpressions(dynbitset const & types, ParameterContext const & paramContext, GeneralRouter * router) const {
+inline bool RouteAttributeEvalRule::checkExpressions(dynbitset const & types, ParameterContext const & paramContext, GeneralRouter * router) const {
 	for(uint i = 0; i < expressions.size(); i++) {
 		if(!expressions[i].matches(types, paramContext, router)) {
 			return false;
@@ -374,7 +377,7 @@ bool RouteAttributeEvalRule::checkExpressions(dynbitset const & types, Parameter
 	return true;
 }
 
-bool RouteAttributeEvalRule::checkFreeTags(dynbitset const & types, GeneralRouter * router) const {
+inline bool RouteAttributeEvalRule::checkFreeTags(dynbitset const & types, GeneralRouter * router) const {
 	for(UNORDERED(set)<std::string>::const_iterator it = onlyTags.begin(); it != onlyTags.end(); it++) {
 		UNORDERED(map)<std::string, dynbitset >::iterator ms = router->tagRuleMask.find(*it);
 		if (ms == router->tagRuleMask.end() || !align(ms->second, types.size()).intersects(types)) {
@@ -384,7 +387,7 @@ bool RouteAttributeEvalRule::checkFreeTags(dynbitset const & types, GeneralRoute
 	return true;
 }
 
-bool RouteAttributeEvalRule::checkNotFreeTags(dynbitset const & types, GeneralRouter * router) const {
+inline bool RouteAttributeEvalRule::checkNotFreeTags(dynbitset const & types, GeneralRouter * router) const {
 	for(UNORDERED(set)<std::string>::const_iterator it = onlyNotTags.begin(); it != onlyNotTags.end(); it++) {
 		UNORDERED(map)<std::string, dynbitset>::iterator ms = router->tagRuleMask.find(*it);
 		if (ms != router->tagRuleMask.end() && align(ms->second, types.size()).intersects(types)) {
@@ -394,11 +397,11 @@ bool RouteAttributeEvalRule::checkNotFreeTags(dynbitset const & types, GeneralRo
 	return true;
 }
 
-bool RouteAttributeEvalRule::checkAllTypesShouldNotBePresent(dynbitset const & types) {
+inline bool RouteAttributeEvalRule::checkAllTypesShouldNotBePresent(dynbitset const & types) {
 	return ! align(filterNotTypes, types.size()).intersects(types);
 }
 
-bool RouteAttributeEvalRule::checkAllTypesShouldBePresent(dynbitset const & types) {
+inline bool RouteAttributeEvalRule::checkAllTypesShouldBePresent(dynbitset const & types) {
 	return align(filterTypes, types.size()).is_subset_of(types);
 }
 

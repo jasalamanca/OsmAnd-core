@@ -153,8 +153,7 @@ private:
 	dynbitset convert(RoutingIndex* reg, std::vector<uint32_t>& types) const;
 
 	double evaluate(SHARED_PTR<RouteDataObject> const & ro) {
-		dynbitset local =  convert(ro->region, ro->types);
-		return evaluate(local);
+		return evaluate(convert(ro->region, ro->types));
 	}
 
 	int evaluateInt(SHARED_PTR<RouteDataObject> const & ro, int defValue) {
@@ -166,8 +165,7 @@ private:
 	}
 
 	double evaluateDouble(RoutingIndex* reg, std::vector<uint32_t>& types, double defValue) {
-		dynbitset local =  convert(reg, types);
-		double d = evaluate(local);
+		double d = evaluate(convert(reg, types));
 		if(d == DOUBLE_MISSING) {
 			return defValue;
 		}

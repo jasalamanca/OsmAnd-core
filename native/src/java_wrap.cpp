@@ -55,8 +55,6 @@ extern "C" JNIEXPORT void JNICALL Java_net_osmand_NativeLibrary_deleteSearchResu
 	}
 }
 
-
-
 extern "C" JNIEXPORT void JNICALL Java_net_osmand_NativeLibrary_deleteRenderingContextHandle(JNIEnv* ienv,
 		jobject obj, jlong searchResult) {
 	RenderingContextResults* result = (RenderingContextResults*) searchResult;
@@ -489,12 +487,11 @@ jfieldID jfield_RenderingContext_allObjects = NULL;
 jfieldID jfield_RenderingContext_density = NULL;
 jfieldID jfield_RenderingContext_textScale = NULL;
 jfieldID jfield_RenderingContext_screenDensityRatio = NULL;
-jfieldID jfield_RenderingContext_shadowRenderingMode = NULL;
-jfieldID jfield_RenderingContext_shadowRenderingColor = NULL;
-jfieldID jfield_RenderingContext_defaultColor = NULL;
+//jfieldID jfield_RenderingContext_shadowRenderingMode = NULL;
+//jfieldID jfield_RenderingContext_shadowRenderingColor = NULL;
+//jfieldID jfield_RenderingContext_defaultColor = NULL;
 jfieldID jfield_RenderingContext_textRenderingTime = NULL;
 jfieldID jfield_RenderingContext_lastRenderedKey = NULL;
-
 jmethodID jmethod_RenderingContext_getIconRawData = NULL;
 
 jclass jclass_RouteDataObject = NULL;
@@ -510,7 +507,6 @@ jmethodID jmethod_RouteDataObject_init = NULL;
 
 jclass jclass_NativeRouteSearchResult = NULL;
 jmethodID jmethod_NativeRouteSearchResult_init = NULL;
-
 
 jclass jclass_RouteSubregion = NULL;
 jfieldID jfield_RouteSubregion_length = NULL;
@@ -647,17 +643,14 @@ void loadJniRenderingContext(JNIEnv* env)
 	jfield_RenderingContext_density = getFid(env,  jclass_RenderingContext, "density", "F" );
 	jfield_RenderingContext_textScale = getFid(env,  jclass_RenderingContext, "textScale", "F" );
 	jfield_RenderingContext_screenDensityRatio = getFid(env,  jclass_RenderingContext, "screenDensityRatio", "F" );	
-	jfield_RenderingContext_shadowRenderingMode = getFid(env,  jclass_RenderingContext, "shadowRenderingMode", "I" );
-	jfield_RenderingContext_shadowRenderingColor = getFid(env,  jclass_RenderingContext, "shadowRenderingColor", "I" );
-	jfield_RenderingContext_defaultColor = getFid(env,  jclass_RenderingContext, "defaultColor", "I" );
+//	jfield_RenderingContext_shadowRenderingMode = getFid(env,  jclass_RenderingContext, "shadowRenderingMode", "I" );
+//	jfield_RenderingContext_shadowRenderingColor = getFid(env,  jclass_RenderingContext, "shadowRenderingColor", "I" );
+//	jfield_RenderingContext_defaultColor = getFid(env,  jclass_RenderingContext, "defaultColor", "I" );
 	jfield_RenderingContext_textRenderingTime = getFid(env,  jclass_RenderingContext, "textRenderingTime", "I" );
 	jfield_RenderingContext_lastRenderedKey = getFid(env,  jclass_RenderingContext, "lastRenderedKey", "I" );
-	jmethod_RenderingContext_getIconRawData = env->GetMethodID(jclass_RenderingContext,
-				"getIconRawData", "(Ljava/lang/String;)[B");
+	jmethod_RenderingContext_getIconRawData = env->GetMethodID(jclass_RenderingContext, "getIconRawData", "(Ljava/lang/String;)[B");
 
-	jmethod_Object_toString = env->GetMethodID(findGlobalClass(env, "java/lang/Object"),
-					"toString", "()Ljava/lang/String;");
-
+	jmethod_Object_toString = env->GetMethodID(findGlobalClass(env, "java/lang/Object"), "toString", "()Ljava/lang/String;");
 
 	jclass_JUnidecode = findGlobalClass(env, "net/sf/junidecode/Junidecode");
     jmethod_JUnidecode_unidecode = env->GetStaticMethodID(jclass_JUnidecode, "unidecode", "(Ljava/lang/String;)Ljava/lang/String;");
@@ -693,7 +686,6 @@ void loadJniRenderingContext(JNIEnv* env)
     jfield_RouteSubregion_bottom= getFid(env,  jclass_RouteSubregion, "bottom", "I" );
     jfield_RouteSubregion_shiftToData= getFid(env,  jclass_RouteSubregion, "shiftToData", "I" );
 	// public final RouteRegion routeReg;
-
 }
 
 void pullFromJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext* rc)
@@ -1295,9 +1287,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_net_osmand_NativeLibrary_loadRoutingDa
 
 		return ienv->NewObject(jclass_NativeRouteSearchResult, jmethod_NativeRouteSearchResult_init, ref, NULL);
 	}
-
 }
-
 
 void pushToJavaRenderingContext(JNIEnv* env, jobject jrc, JNIRenderingContext* rc)
 {
@@ -1376,4 +1366,3 @@ std::string JNIRenderingContext::getReshapedString(const std::string& name) {
 	this->env->DeleteLocalRef(n);
 	return res;
 }
-

@@ -1321,7 +1321,6 @@ vector<SHARED_PTR<RouteSegmentResult> > convertFinalSegmentToResults(RoutingCont
             addRouteSegmentToResult(ctx, result, res, true);
         }
         std::reverse(result.begin(), result.end());
-        // checkTotalRoutingTime(result);
     }
     return result;
 }

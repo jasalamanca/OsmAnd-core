@@ -109,13 +109,6 @@ public:
 	}
 };
 
-//		public boolean contains(MapObject o){
-//			return lattop >= o.getLocation().getLatitude() && latbottom <= o.getLocation().getLatitude()
-//					&& lonleft <= o.getLocation().getLongitude() && lonright >= o.getLocation().getLongitude();
-//
-//		}
-
-
 const char* formatBounds(int left, int right, int top, int bottom){
 	float l = get31LongitudeX(left);
 	float r = get31LongitudeX(right);

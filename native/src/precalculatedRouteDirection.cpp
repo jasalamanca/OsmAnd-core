@@ -79,7 +79,7 @@ SHARED_PTR<PrecalculatedRouteDirection> PrecalculatedRouteDirection::build(vecto
 void PrecalculatedRouteDirection::init(vector<int>& x31, vector<int>& y31) {
     vector<float> speedSegments;
     for (int i = 0; i < x31.size(); i++ ) {
-        float routeSpd = maxSpeed; // (s.getDistance() / s.getRoutingTime())
+        float routeSpd = maxSpeed;
         speedSegments.push_back(routeSpd);
     }
     init(x31, y31, speedSegments);
@@ -89,7 +89,6 @@ void PrecalculatedRouteDirection::init(vector<int>& x31, vector<int>& y31, vecto
     float totaltm = 0;
     vector<float> times;
     for (int i = 0; i < x31.size(); i++) {
-        // MapUtils.measuredDist31 vs BinaryRoutePlanner.squareRootDist
         // use measuredDist31 because we use precise s.getDistance() to calculate routeSpd
         int ip = i == 0 ? 0 : i - 1;
         float dist = (float) measuredDist31(x31[ip], y31[ip], x31[i], y31[i]);
